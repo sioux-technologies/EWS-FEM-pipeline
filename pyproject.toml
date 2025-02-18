@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ews-fem-pipeline"
+dynamic = ["version"]
+description = 'Pipeline for running FEM simulations for Early Warning Scan'
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = []
+authors = [
+  { name = "Pim Keizer", email = "pim.keizer@sioux.eu" },
+  { name = "Casper Schippers", email = "casper.schippers@sioux.eu" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  # "Programming Language :: Python :: 3.9",
+  # "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = [
+  "click",
+  "tqdm",
+  "gmsh",
+  "numpy",
+  "pydantic",
+  "pyvista",
+  "toml",
+]
+
+[project.scripts]
+fem-pipeline = "ews_fem_pipeline.cli:cli_main"
+
+[tool.hatch.version]
+path = "src/ews_fem_pipeline/__about__.py"
+
+[tool.coverage.run]
+source_pkgs = ["ews_fem_pipeline", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/ews_fem_pipeline/__about__.py",
+]
+
+[tool.coverage.paths]
+ews_fem_pipeline = ["src/ews_fem_pipeline", "*/ews-fem-pipeline/src/ews_fem_pipeline"]
+tests = ["tests", "*/ews-fem-pipeline/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]

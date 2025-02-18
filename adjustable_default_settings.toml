@@ -1,0 +1,57 @@
+[model.mesh]
+density = 195.0
+
+[model.geometry]
+radius = 0.07
+thickness_chest_wall = 0.002
+left_relative_position_ellipse = 0.4
+right_relative_position_ellipse = 0.05
+center_relative_position_ellipse = 0.3
+
+[material.skin]
+density = 1100.0
+bulk_modulus = 480000.0
+coef1 = 1200.0
+coef2 = 1200.0
+
+[material.adipose]
+density = 911.0
+bulk_modulus = 425000.0
+coef1 = 109.0
+coef2 = 106.0
+
+[material.glandular]
+density = 1041.0
+bulk_modulus = 425000.0
+coef1 = 230.0
+coef2 = 195.0
+
+[material.tumor]
+tumorous = true
+density = 1079.0
+radius = 0.005
+position = [ 0.035, 0.04, 0.0,]
+coef1_adipose = 971.0
+coef2_adipose = 939.0
+coef1_glandular = 920.0
+coef2_glandular = 870.0
+
+[simulation.control_step2]
+time_steps = 120.0
+step_size = 0.01
+
+[simulation.timestepper_step2]
+max_retries = 20.0
+
+[simulation.parabolic_jump]
+max_height = 0.01
+
+[simulation.animation]
+fps = 40
+dtmax = 0.01
+
+[simulation.output]
+output_to_vtk = true
+output_displacement = true
+output_stress = false
+output_relative_volume = false

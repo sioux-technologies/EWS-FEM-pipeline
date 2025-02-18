@@ -1,0 +1,172 @@
+[model.mesh]
+ls = 0.005
+density = 195.0
+optimize = true
+order = 2
+
+[model.geometry]
+radius = 0.07
+thickness_chest_wall = 0.002
+left_relative_position_ellipse = 0.4
+right_relative_position_ellipse = 0.05
+center_relative_position_ellipse = 0.3
+
+[material.skin]
+density = 1100.0
+bulk_modulus = 480000.0
+pressure_model = "default"
+coef1 = 1200.0
+coef2 = 1200.0
+
+[material.adipose]
+density = 911.0
+bulk_modulus = 425000.0
+pressure_model = "default"
+coef1 = 109.0
+coef2 = 106.0
+
+[material.glandular]
+density = 1041.0
+bulk_modulus = 425000.0
+pressure_model = "default"
+coef1 = 230.0
+coef2 = 195.0
+
+[material.tumor]
+tumorous = true
+density = 1079.0
+radius = 0.005
+position = [ 0.035, 0.04, 0.0,]
+coef1_adipose = 971.0
+coef2_adipose = 939.0
+coef1_glandular = 920.0
+coef2_glandular = 870.0
+
+[simulation.control_step1]
+analysis = "STATIC"
+time_steps = 10.0
+step_size = 0.1
+plot_zero_state = "0"
+plot_range = "0,-1"
+plot_level = "PLOT_NEVER"
+output_level = "OUTPUT_NEVER"
+plot_stride = "1"
+output_stride = "1"
+adaptor_re_solve = "1"
+
+[simulation.timestepper_step1]
+max_retries = 40.0
+opt_iter = 11.0
+dtmin = 0.0
+dtmax = 0.1
+aggressiveness = 0.0
+cutback = 0.5
+dtforce = 0.0
+
+[simulation.solver_step1]
+symmetric_stiffness = "symmetric"
+equation_scheme = "staggered"
+equation_order = "default"
+optimize_bw = 0.0
+lstol = 0.9
+lsmin = 0.01
+lsiter = 5.0
+ls_check_jacobians = 0.0
+max_refs = 15.0
+check_zero_diagonal = 0.0
+zero_diagonal_tol = 0.0
+force_partition = 0.0
+reform_each_time_step = 1.0
+reform_augment = 0.0
+diverge_reform = 1.0
+min_residual = 1e-20
+max_residual = 0.0
+dtol = 0.001
+etol = 0.01
+rtol = 0.0
+rhoi = -2.0
+alpha = 1.0
+beta = 0.25
+gamma = 0.25
+logSolve = 0.0
+arc_length = 0.0
+arc_length_scale = 0.0
+
+[simulation.qnmethod_step1]
+max_ups = 10.0
+max_buffer_size = 0.0
+cycle_buffer = 1.0
+cmax = 100000.0
+
+[simulation.control_step2]
+analysis = "DYNAMIC"
+time_steps = 120.0
+step_size = 0.01
+plot_zero_state = "0"
+plot_range = "0,-1"
+plot_level = "PLOT_MUST_POINTS"
+output_level = "OUTPUT_MUST_POINTS"
+plot_stride = "1"
+output_stride = "1"
+adaptor_re_solve = "1"
+
+[simulation.timestepper_step2]
+max_retries = 20.0
+opt_iter = 11.0
+dtmin = 0.0
+dtmax = 0.01
+aggressiveness = 0.0
+cutback = 0.5
+dtforce = 0.0
+
+[simulation.solver_step2]
+symmetric_stiffness = "symmetric"
+equation_scheme = "staggered"
+equation_order = "default"
+optimize_bw = 0.0
+lstol = 0.9
+lsmin = 0.01
+lsiter = 5.0
+ls_check_jacobians = 0.0
+max_refs = 15.0
+check_zero_diagonal = 0.0
+zero_diagonal_tol = 0.0
+force_partition = 0.0
+reform_each_time_step = 1.0
+reform_augment = 0.0
+diverge_reform = 1.0
+min_residual = 1e-20
+max_residual = 0.0
+dtol = 0.001
+etol = 0.01
+rtol = 0.0
+rhoi = -2.0
+alpha = 1.0
+beta = 1.0
+gamma = 1.5
+logSolve = 0.0
+arc_length = 0.0
+arc_length_scale = 0.0
+
+[simulation.qnmethod_step2]
+max_ups = 10.0
+max_buffer_size = 0.0
+cycle_buffer = 1.0
+cmax = 100000.0
+
+[simulation.gravity]
+n_steps = 10
+
+[simulation.parabolic_jump]
+max_height = 0.01
+n_steps = 51
+
+[simulation.animation]
+fps = 40
+dtmax = 0.01
+
+[simulation.output]
+output_to_vtk = true
+output_displacement = true
+output_stress = false
+output_relative_volume = false
