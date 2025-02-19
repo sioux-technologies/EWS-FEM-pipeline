@@ -1,7 +1,7 @@
-import numpy as np
-from pathlib import Path
 import logging
+from pathlib import Path
 
+import numpy as np
 import pyvista as pv
 from tqdm import tqdm
 
@@ -79,7 +79,7 @@ def feb_to_blender(filepath: Path):  # Input should be path to .vtk files
     # Initialize 3D array containing all displacements per time step
     surface_disp_obj = np.zeros((len(time_stamps), len_surface_points, 3))
 
-    for idx_time, time_step in enumerate(tqdm(time_stamps)):
+    for idx_time, _time_step in enumerate(tqdm(time_stamps)):
         file_path = filepaths_vtk[idx_time]
 
         shifted_grid = pv.read(file_path)

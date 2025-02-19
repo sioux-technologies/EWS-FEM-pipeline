@@ -1,8 +1,9 @@
 import tomllib
-import toml
 from pathlib import Path
 
-from ews_fem_pipeline.prepare_simulation import Settings
+import toml
+
+from ews_fem_pipeline.prepare_simulation.simulation_settings import Settings
 
 
 def write_settings_to_toml(filepath: Path, settings):

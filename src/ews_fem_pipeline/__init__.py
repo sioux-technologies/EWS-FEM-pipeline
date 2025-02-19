@@ -1,6 +1,12 @@
-import tomllib
 import logging.config
+import tomllib
 from pathlib import Path
+
+try:
+    from ews_fem_pipeline._version import __version__, __version_tuple__
+except ImportError:
+    __version__ = version = '0.0.0'
+    __version_tuple__ = version_tuple = (0, 0, 0, '', '')
 
 
 # Setup for logging

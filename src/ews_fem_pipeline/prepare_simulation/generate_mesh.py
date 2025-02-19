@@ -1,15 +1,16 @@
-import math
-import numpy as np
 import logging
+import math
 
 import gmsh
+import numpy as np
 
-from ews_fem_pipeline.prepare_simulation import MeshParts, Settings
+from ews_fem_pipeline.prepare_simulation.model_settings import MeshParts
+from ews_fem_pipeline.prepare_simulation.simulation_settings import Settings
 
 logger = logging.getLogger(__name__)
 
 
-def generate_mesh(settings: Settings()):
+def generate_mesh(settings: Settings) -> MeshParts:
     """
     In this function, the mesh is generated from settings extracted from the Settings class, in particular the mesh
     and geometry classes. These settings are explained in detail in model_settings.py under the MeshSettings and GeometrySettings
@@ -39,43 +40,48 @@ def generate_mesh(settings: Settings()):
     # Construct breast quadrant #
     #############################
 
-    p1 = build.addPoint(0, 0, 0, settings.model.mesh.ls, 1)  # Origin point
-    p2 = build.addPoint(0, settings.model.geometry.radius, 0, settings.model.mesh.ls, 2)  # Point along rotation axis
-    p3 = build.addPoint(0, 0, settings.model.geometry.radius, settings.model.mesh.ls,
+    points = {}
+    lines = {}
+    loops = {}
+    surfs = {}
+
+    points[1] = build.addPoint(0, 0, 0, settings.model.mesh.ls, 1)  # Origin point
+    points[2] = build.addPoint(0, settings.model.geometry.radius, 0, settings.model.mesh.ls, 2)  # Point along rotation axis
+    points[3] = build.addPoint(0, 0, settings.model.geometry.radius, settings.model.mesh.ls,
                         3)  # Point perpendicular up to rotation axis
 
-    l1 = build.addLine(p1, p2, 1)
-    l2 = build.addCircleArc(p2, p1, p3, 2)  # Lower circle arc of breast
-    l3 = build.addLine(p3, p1, 3)  # Line perpendicular up to rotation axis
+    lines[1] = build.addLine(points[1], points[2], 1)
+    lines[2] = build.addCircleArc(points[2], points[1], points[3], 2)  # Lower circle arc of breast
+    lines[3] = build.addLine(points[3], points[1], 3)  # Line perpendicular up to rotation axis
 
-    loop1 = build.addCurveLoop([l1, l2, l3], 1)
-    s1 = build.addPlaneSurface([loop1], 1)
+    loops[1] = build.addCurveLoop([lines[1], lines[2], lines[3]], 1)
+    surfs[1] = build.addPlaneSurface([loops[1]], 1)
 
-    p4 = build.addPoint(0, -settings.model.geometry.left_position_ellipse, 0, settings.model.mesh.ls, 4)
-    p5 = build.addPoint(0, settings.model.geometry.radius + settings.model.geometry.position_nipple, 0, settings.model.mesh.ls, 5)
-    p6 = build.addPoint(0, (settings.model.geometry.radius + settings.model.geometry.position_nipple - settings.model.geometry.left_position_ellipse) / 2,
+    points[4] = build.addPoint(0, -settings.model.geometry.left_position_ellipse, 0, settings.model.mesh.ls, 4)
+    points[5] = build.addPoint(0, settings.model.geometry.radius + settings.model.geometry.position_nipple, 0, settings.model.mesh.ls, 5)
+    points[6] = build.addPoint(0, (settings.model.geometry.radius + settings.model.geometry.position_nipple - settings.model.geometry.left_position_ellipse) / 2,
                         -settings.model.geometry.position_center_ellipse,
                         settings.model.mesh.ls, 6)
 
-    l4 = build.addEllipseArc(p4, p6, p5, p5, 4)
-    l5 = build.addLine(p4, p5, 5)
+    lines[4] = build.addEllipseArc(points[4], points[6], points[5], points[5], 4)
+    lines[5] = build.addLine(points[4], points[5], 5)
 
-    loop2 = build.addCurveLoop([l4, l5], 2)
-    s2 = build.addPlaneSurface([loop2], 2)
+    loops[2] = build.addCurveLoop([lines[4], lines[5]], 2)
+    surfs[2] = build.addPlaneSurface([loops[2]], 2)
 
     # Add back side breast
-    p7 = build.addPoint(0, -settings.model.geometry.thickness_chest_wall, settings.model.geometry.radius, settings.model.mesh.ls, 7)
-    p8 = build.addPoint(0, -settings.model.geometry.thickness_chest_wall, 0, settings.model.mesh.ls, 8)
+    points[7] = build.addPoint(0, -settings.model.geometry.thickness_chest_wall, settings.model.geometry.radius, settings.model.mesh.ls, 7)
+    points[8] = build.addPoint(0, -settings.model.geometry.thickness_chest_wall, 0, settings.model.mesh.ls, 8)
 
-    l6 = build.addLine(p3, p7, 6)
-    l7 = build.addLine(p7, p8, 7)
-    l8 = build.addLine(p8, p1, 8)
+    lines[6] = build.addLine(points[3], points[7], 6)
+    lines[7] = build.addLine(points[7], points[8], 7)
+    lines[8] = build.addLine(points[8], points[1], 8)
 
-    loop3 = build.addCurveLoop(([l8, l3, l6, l7]))
-    s3 = build.addPlaneSurface([loop3])
+    loops[3] = build.addCurveLoop(([lines[8], lines[3], lines[6], lines[7]]))
+    surfs[3] = build.addPlaneSurface([loops[3]])
 
     # Fragment entire mesh in different regions (Assigns news points to intersection of curves)
-    build.fragment([(dim2, s1), (dim2, s2)], [(dim2, s3)])
+    build.fragment([(dim2, surfs[1]), (dim2, surfs[2])], [(dim2, surfs[3])])
 
     # Get indices of all (including newly formed due to fragment) objects
     all_points = build.getEntities(dim0)
@@ -85,25 +91,38 @@ def generate_mesh(settings: Settings()):
     # Name all points with convention p{tag}
     for i in range(len(all_points)):
         idx = all_points[i][1]
-        globals()['p%s' % idx] = idx
+        points[idx] = idx
 
     # Name all lines with convention l{tag}
     for i in range(len(all_lines)):
         idx = all_lines[i][1]
-        globals()['l%s' % idx] = idx
+        lines[idx] = idx
 
     # Remove all surfaces as we will be rebuilding them
     build.remove(all_surfaces)
     # Remove all points that we will not need anymore. Note, first we remove the lines, then the points,
     # as lines are constructed by connecting points
-    build.remove(
-        [(dim1, l3), (dim1, l4), (dim1, l5), (dim1, l7), (dim1, l8), (dim1, l9), (dim1, l11), (dim1, l12),
-         (dim1, l14)])
-    build.remove([(dim0, p6), (dim0, p10), (dim0, p12), (dim0, p14)])
+    build.remove([
+        (dim1, lines[3]),
+        (dim1, lines[4]),
+        (dim1, lines[5]),
+        (dim1, lines[7]),
+        (dim1, lines[8]),
+        (dim1, lines[9]),
+        (dim1, lines[11]),
+        (dim1, lines[12]),
+        (dim1, lines[14]),
+    ])
+    build.remove([
+        (dim0, points[6]),
+        (dim0, points[10]),
+        (dim0, points[12]),
+        (dim0, points[14]),
+    ])
 
     # Add lines to complete reconstruction
-    l3 = build.addLine(p16, p13, 3)
-    l4 = build.addLine(p8, p15, 4)
+    lines[3] = build.addLine(points[16], points[13], 3)
+    lines[4] = build.addLine(points[8], points[15], 4)
 
     ###############################################
     # Construct 3D geometry by revolving quadrant #
@@ -156,14 +175,14 @@ def generate_mesh(settings: Settings()):
 
     # Here we loop over the tissues and assign the nodes, elements, etc. to the different fields.
     for name in tissues.model_fields:
-        if getattr(tissues, name).dim == 2:
+        if getattr(tissues, name).dim == 2:  # noqa: PLR2004
             getattr(tissues, name).type = settings.model.mesh.elem_type_surface
         else:
             getattr(tissues, name).type = settings.model.mesh.elem_type_volume
 
         tags = getattr(tissues, name).tags
 
-        if type(tags) == list:
+        if isinstance(tags, list):
             elements = []
             nodes = []
             for tag in tags:

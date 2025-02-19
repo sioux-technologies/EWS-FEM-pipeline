@@ -1,9 +1,9 @@
+import logging
+import multiprocessing
 import os
+import re
 import shutil
 import subprocess
-import multiprocessing
-import logging
-import re
 from enum import Enum
 from functools import partial
 from multiprocessing.pool import ThreadPool
@@ -23,7 +23,8 @@ class FEBioRunner:
         self.resolve_febio_executable()
 
     def resolve_febio_executable(self):
-        # Look for environment variable FEBIO_PATH: if that exists, it should point towards the executable (or folder with executable); if it doesn't exist, look for it on the path, or some other default locations
+        # Look for environment variable FEBIO_PATH: if that exists, it should point towards the executable
+        # (or folder with executable); if it doesn't exist, look for it on the path, or some other default locations
         if "FEBIO_PATH" in os.environ:
             febio_path = Path(os.environ["FEBIO_PATH"])
             logger.debug(f"Looking for febio on the FEBIO_PATH: {febio_path}.")
@@ -36,8 +37,8 @@ class FEBioRunner:
 
         # Look on path (extended by some default search directories)
         else:
-            logger.debug(f"Looking for febio on the (extended) system path.")
-            search_path = os.environ["path"]
+            logger.debug("Looking for febio on the (extended) system path.")
+            search_path = os.environ["PATH"]
             search_path = os.pathsep.join([search_path, *Settings.febio_search_path_extension])
             febio_path = shutil.which("febio4.exe", path=search_path)
 
@@ -50,7 +51,7 @@ class FEBioRunner:
             logger.error("Did not find FEBio executable.")
             raise FileNotFoundError("Did not find FEBio executable.")
 
-    def run(self, input_files: tuple[Path], n_processes: int = 1):
+    def run(self, input_files: tuple[Path, ...], n_processes: int = 1):
         assert all(f.is_file() for f in input_files)
         assert n_processes >= 1
 
@@ -85,7 +86,7 @@ class FEBioRunner:
         run_logger.info(f"Started running {input_file.name}")
 
         proc_args = [str(self.febio_executable), str(input_file)]
-        run_logger.debug(f" " + " ".join(proc_args))
+        run_logger.debug(" " + " ".join(proc_args))
 
         p = subprocess.Popen(proc_args, env=env,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -100,10 +101,10 @@ class FEBioRunner:
         NOTERMINATION = "{name} terminated unexpectedly (no termination state found)."
         NOLOGFILE = "{name} most likely didn't run (no log file found)."
 
-    TERMINATIONPATTERNS = {
-        TERMINATIONSTATES.NORMALTERMINATION: re.compile("N O R M A L   T E R M I N A T I O N"),
-        TERMINATIONSTATES.ERRORTERMINATION: re.compile("E R R O R   T E R M I N A T I O N"),
-    }
+    TERMINATIONPATTERNS: tuple[tuple[TERMINATIONSTATES, re.Pattern], ...] = (
+        (TERMINATIONSTATES.NORMALTERMINATION, re.compile("N O R M A L {3}T E R M I N A T I O N")),
+        (TERMINATIONSTATES.ERRORTERMINATION, re.compile("E R R O R {3}T E R M I N A T I O N")),
+    )
 
     TIMEPATTERN = re.compile(r"Total elapsed time [.]* : [\d:]* \(([\d.]*) sec\)")
 
@@ -122,7 +123,7 @@ class FEBioRunner:
             file.seek(-self.TAIL_LENGTH, 2)
             tail = file.read(self.TAIL_LENGTH).decode("utf-8")
 
-            for state, pattern in self.TERMINATIONPATTERNS.items():
+            for state, pattern in self.TERMINATIONPATTERNS:
                 if pattern.search(tail):
                     term_state = state
                     break

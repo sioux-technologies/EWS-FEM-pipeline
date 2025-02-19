@@ -1,8 +1,17 @@
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from ews_fem_pipeline.prepare_simulation import MeshParts, Settings, FEBElement, Constants, BoundaryCondition, \
-    Loads, write_nodes_to_xml, write_elements_to_xml, write_xml
+from ews_fem_pipeline.prepare_simulation.model_settings import MeshParts
+from ews_fem_pipeline.prepare_simulation.simulation_settings import (
+    BoundaryCondition,
+    Constants,
+    FEBElement,
+    Loads,
+    Settings,
+    write_elements_to_xml,
+    write_nodes_to_xml,
+    write_xml,
+)
 
 
 def write_to_feb(filepath: Path, mesh: MeshParts, settings: Settings):
@@ -17,7 +26,7 @@ def write_to_feb(filepath: Path, mesh: MeshParts, settings: Settings):
     ########
     root = ET.Element('febio_spec', version="4.0")
 
-    module_elem = FEB_element.module.to_xml(parent=root)
+    FEB_element.module.to_xml(parent=root)
 
     ##############################################################################################################
     # Globals #
@@ -90,15 +99,15 @@ def write_to_feb(filepath: Path, mesh: MeshParts, settings: Settings):
 
     # Control
     control1_elem = FEB_element.control.to_xml(parent=step1_elem)
-    control1_field = settings.simulation.control_step1.to_xml(parent=control1_elem)
+    settings.simulation.control_step1.to_xml(parent=control1_elem)
 
     # Time Stepper
     timestepper1_elem = FEB_element.time_stepper.to_xml(parent=control1_elem)
-    timestepper1_field = settings.simulation.timestepper_step1.to_xml(parent=timestepper1_elem)
+    settings.simulation.timestepper_step1.to_xml(parent=timestepper1_elem)
 
     # Solver
     solver1_elem = FEB_element.solver.to_xml(parent=control1_elem)
-    solver1_field = settings.simulation.solver_step1.to_xml(parent=solver1_elem)
+    settings.simulation.solver_step1.to_xml(parent=solver1_elem)
 
     # qn_method
     qnmethod1_elem = FEB_element.qn_method.to_xml(parent=solver1_elem)
@@ -116,15 +125,15 @@ def write_to_feb(filepath: Path, mesh: MeshParts, settings: Settings):
 
     # Control
     control2_elem = FEB_element.control.to_xml(parent=step2_elem)
-    control3_field = settings.simulation.control_step2.to_xml(parent=control2_elem)
+    settings.simulation.control_step2.to_xml(parent=control2_elem)
 
     # Time Stepper
     timestepper2_elem = FEB_element.time_stepper.to_xml(parent=control2_elem)
-    timestepper2_field = settings.simulation.timestepper_step2.to_xml(parent=timestepper2_elem)
+    settings.simulation.timestepper_step2.to_xml(parent=timestepper2_elem)
 
     # Solver
     solver2_elem = FEB_element.solver.to_xml(parent=control2_elem)
-    solver2_field = settings.simulation.solver_step2.to_xml(parent=solver2_elem)
+    settings.simulation.solver_step2.to_xml(parent=solver2_elem)
 
     # qn_method
     qnmethod2_elem = FEB_element.qn_method.to_xml(parent=solver2_elem)

@@ -1,10 +1,17 @@
 from pathlib import Path
+
 import click
 
-from ews_fem_pipeline.__about__ import __version__
-from ews_fem_pipeline.run_simulation import FEBioRunner
-from ews_fem_pipeline.prepare_simulation import write_to_feb, generate_mesh, Settings, load_settings_from_toml, write_settings_to_toml
+from ews_fem_pipeline import __version__
 from ews_fem_pipeline.convert_simulation import feb_to_blender
+from ews_fem_pipeline.prepare_simulation import (
+    Settings,
+    generate_mesh,
+    load_settings_from_toml,
+    write_settings_to_toml,
+    write_to_feb,
+)
+from ews_fem_pipeline.run_simulation import FEBioRunner
 
 
 @click.group(
@@ -115,14 +122,11 @@ def fem(input_files: tuple[Path, ...], jobs: int):
     """
 
     for filepath in input_files:
-        assert filepath.suffix == ".feb", f"The input file does not have the correct file extension. Must be .feb"
+        assert filepath.suffix == ".feb", "The input file does not have the correct file extension. Must be .feb"
 
     if jobs == 0:
         # automatically determine how many parallel jobs to use
-        if len(input_files) == 1:
-            jobs = 1
-        else:
-            jobs = 4
+        jobs = 1 if len(input_files) == 1 else 4
 
     output_files = FEBioRunner().run(input_files, jobs)
 

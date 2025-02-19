@@ -1,13 +1,13 @@
-import numpy as np
+import xml.etree.ElementTree as ET
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Annotated
-from dataclasses import dataclass, asdict
-import xml.etree.ElementTree as ET
 
+import numpy as np
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from ews_fem_pipeline.prepare_simulation import MeshSettings, GeometrySettings
+from ews_fem_pipeline.prepare_simulation.model_settings import GeometrySettings, MeshSettings
 
 
 @dataclass

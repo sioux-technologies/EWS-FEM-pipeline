@@ -4,9 +4,10 @@
 # input for "filepath".                                                                        #
 ################################################################################################
 
+from pathlib import Path
+
 import bpy
 import numpy as np
-from pathlib import Path
 
 #  Assign the path to the single .feb file you wish to load in.
 filepath = Path(...)
@@ -66,7 +67,7 @@ if __name__ == "__main__":
         block = obj.shape_key_add(name=str(i_frame), from_mix=False)  # returns a key_blocks member
         block.value = 1.0
         block.mute = True
-        for (vert, co) in zip(block.data, disp_data[i_frame]):
+        for (vert, co) in zip(block.data, disp_data[i_frame], strict=True):
             vert.co = co
 
         # keyframe off on frame zero
