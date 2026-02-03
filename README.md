@@ -24,7 +24,7 @@ pip install -e .[dev]
 
 ### FEBio
 For running the FEBio simulations, the package requires FEBio to be available.
-This can be obtained by downloading pre-built binaries from the [FEBio website](https://febio.org/), of by building the sourcecode, which is available on [GitHub](https://github.com/febiosoftware/FEBio); building from source requires a C++ compiler, cmake, and preferably MKL.
+This can be obtained by downloading pre-built binaries from the [FEBio website](https://febio.org/), of by building the sourcecode, which is available on [GitHub](https://github.com/febiosoftware/FEBio); building from source requires a C++ compiler, cmake, and preferably MKL. If FEBio is not installed in a default location, point the pipeline to the executable `febio4.exe` using the environment variable `FEBIO_PATH`.
 
 ## Usage
 After installation of the Python package, the pipeline is ready to use.
