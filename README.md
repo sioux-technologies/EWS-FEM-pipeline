@@ -49,9 +49,9 @@ The command takes two inputs:
 For the input, the pipeline makes use of `.toml` files, which can easily be accessed and written with a text editor.
 In the section [writing input files](#writing-input-files), we elaborate on how to write your own input file.
 For now the user can get started with a [default settings file](all_default_settings.toml) which we provided in this project.
-An example command would be:
+An example (with unphysical values to test installation) command would be:
 ```commandline
-fem-pipeline run path/to/all_default_settings.toml
+fem-pipeline run path/to/test_settings.toml
 ```
 
 After the simulation has finished, the `run` command generates two output files per `.toml` from which Blender can construct the simulation.
