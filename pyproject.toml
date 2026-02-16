@@ -30,7 +30,7 @@ classifiers = [
 dependencies = [
   "click",
   "tqdm",
-  "gmsh",
+  "gmsh==4.13.1",
   "numpy",
   "pydantic",
   "pyvista",

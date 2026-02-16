@@ -1,0 +1,17 @@
+[model.mesh]
+density = 115.0
+
+[material.tumor]
+tumorous = false
+
+[simulation.control_step2]
+time_steps = 10.0
+
+[simulation.animation]
+fps = 10
+
+[simulation.output]
+output_to_vtk = true
+output_displacement = true
+output_stress = false
+output_relative_volume = false

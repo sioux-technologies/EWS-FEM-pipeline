@@ -5,4 +5,5 @@ class Settings:
     febio_search_path_extension: tuple[str, ...] = (
         "C:\\Program Files\\FEBio\\bin",
         "C:\\Program Files (x86)\\FEBio\\bin",
+        "C:\\Program Files\\FEBioStudio\\bin",
     )
