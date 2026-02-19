@@ -216,3 +216,4 @@ def generate_mesh(settings: Settings) -> MeshParts:
     gmsh.finalize()
 
     return mesh_parts
+
