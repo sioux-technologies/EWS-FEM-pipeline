@@ -45,9 +45,8 @@ points[2] = build.addPoint(0, settings.model.geometry.radius, 0, settings.model.
 points[3] = build.addPoint(0, 0, settings.model.geometry.radius, settings.model.mesh.ls,
                     3)  # Point perpendicular up to rotation axis
 
-lines[1] = build.addLine(points[1], points[2], 1)
-lines[2] = build.addCircleArc(points[2], points[1], points[3], 2)  # Lower circle arc of breast
-lines[3] = build.addLine(points[3], points[1], 3)  # Line perpendicular up to rotation axis
+lines[1] = build.addCircleArc(points[2], points[1], points[3], 1)  # Lower circle arc of breast
+lines[2] = build.addLine(points[3], points[1], 2)  # Line perpendicular up to rotation axis
 
 
 # Get indices of all (including newly formed due to fragment) objects
@@ -66,8 +65,8 @@ for i in range(len(all_lines)):
     lines[idx] = idx
 
 #Form both halves of the breast by revolving around y-axis
-build.revolve(all_lines[1:], 0, 0, 0, 0, 1, 0, 1*math.pi)
-build.revolve(all_lines[1:], 0, 0, 0, 0, 1, 0, -1*math.pi)
+build.revolve(all_lines[:], 0, 0, 0, 0, 1, 0, 1*math.pi)
+build.revolve(all_lines[:], 0, 0, 0, 0, 1, 0, -1*math.pi)
 
 #stretch out one half
 all_surfaces = build.getEntities(dim2)
@@ -101,12 +100,14 @@ glandular_volume, _ = build.fuse([(3,1)], [(3,2)], removeObject=True, removeTool
 surfloop_adipose= build.addSurfaceLoop([1,2,3,4])
 build.addVolume([surfloop_adipose], 4)
 
-adipose_volume, _ = build.cut([(3,4)], [(3,3)], removeObject=True, removeTool=False, tag=5)
-
 all_surfaces = build.getEntities(dim2)
 all_volumes = build.getEntities(dim3)
 #make sure tissue and skin does not overlap
 build.fragment(all_volumes, all_surfaces)
+
+adipose_volume, _ = build.cut([(3,4)], [(3,3)], removeObject=True, removeTool=False, tag=5)
+
+
 build.synchronize()
 all_final_surfaces = build.getEntities(dim2)
 all_final_lines = build.getEntities(dim1)
@@ -117,7 +118,7 @@ tissues.adipose.tags = 5
 tissues.glandular.tags = [6,7,8]
 
 # Surface tags for skin and chest
-tissues.skin.tags = [15,13]
+tissues.skin.tags = [15,13, 22, 23]
 tissues.chest.tags = [16,17]
 
 #Remove lingering elements
