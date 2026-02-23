@@ -95,17 +95,17 @@ test = build.addVolume([surfloop_gland], 1)
 # Nipple and duct
 duct = build.addCylinder(0,0.7*settings.model.geometry.radius,0,0,0.3*settings.model.geometry.radius+0.005,0,0.005, tag=2)
 glandular_volume, _ = build.fuse([(3,1)], [(3,2)], removeObject=True, removeTool=True, tag=3)
-
 #Surrounding adipose tissue
 surfloop_adipose= build.addSurfaceLoop([1,2,3,4])
 build.addVolume([surfloop_adipose], 4)
+build.cut([(3,4)], [(3,3)], removeTool=True, removeObject=False)
 
+
+#make sure tissue and skin does not overlap
 all_surfaces = build.getEntities(dim2)
 all_volumes = build.getEntities(dim3)
-#make sure tissue and skin does not overlap
-build.fragment(all_volumes, all_surfaces)
 
-adipose_volume, _ = build.cut([(3,4)], [(3,3)], removeObject=True, removeTool=False, tag=5)
+build.fragment(all_volumes, all_surfaces)
 
 
 build.synchronize()
@@ -114,66 +114,66 @@ all_final_lines = build.getEntities(dim1)
 all_final_volumes = build.getEntities(dim3)
 
 
-tissues.adipose.tags = 5
-tissues.glandular.tags = [6,7,8]
-
-# Surface tags for skin and chest
-tissues.skin.tags = [15,13, 22, 23]
-tissues.chest.tags = [16,17]
-
-#Remove lingering elements
-build.remove(build.getEntities(dim2))
-build.remove(build.getEntities(dim1))
-build.remove(build.getEntities(dim0))
-
-# Synchronize the geometry before assigning meshing
-build.synchronize()
-
-####################
-# Generate 3D mesh #
-####################
-
-# Assign global mesh density by scaling mesh with length of mesh curves
-curve_list = build.getEntities(dim1)
-for curve in curve_list:
-    length_curve = build.getMass(dim1, curve[1])
-    mesh.setTransfiniteCurve(curve[1], int(settings.model.mesh.density * length_curve))
-
-# Generate mesh up to 3D, set to predefined mesh order, and optionally optimize
-mesh.generate(dim3)
-mesh.setOrder(settings.model.mesh.order)
-if settings.model.mesh.optimize:
-    if settings.model.mesh.order == 1:
-        mesh.optimize()
-    else:
-        mesh.optimize("HighOrder")
-
-# Here we loop over the tissues and assign the nodes, elements, etc. to the different fields.
-for name in tissues.model_fields:
-    if getattr(tissues, name).dim == 2:  # noqa: PLR2004
-        getattr(tissues, name).type = settings.model.mesh.elem_type_surface
-    else:
-        getattr(tissues, name).type = settings.model.mesh.elem_type_volume
-
-    tags = getattr(tissues, name).tags
-
-    if isinstance(tags, list):
-        elements = []
-        nodes = []
-        for tag in tags:
-            elements.append(mesh.getElements(getattr(tissues, name).dim, tag)[1][0])
-            nodes.append(mesh.getElements(getattr(tissues, name).dim, tag)[2][0])
-        elements = [int(item) for sublist in elements for item in sublist]
-        nodes = np.array([int(item) for sublist in nodes for item in sublist])
-        element_type = mesh.getElements(getattr(tissues, name).dim, tag)[0][0]
-        num_nodes = int(mesh.getElementProperties(element_type)[3])
-        getattr(tissues, name).elements = elements
-        getattr(tissues, name).nodes = nodes.reshape(-1, num_nodes)
-    else:
-        element_type, elements, nodes = mesh.getElements(getattr(tissues, name).dim, getattr(tissues, name).tags)
-        num_nodes = mesh.getElementProperties(element_type[0])[3]
-        getattr(tissues, name).elements = elements[0]
-        getattr(tissues, name).nodes = nodes[0].reshape(-1, num_nodes)
+# tissues.adipose.tags = [4]
+# tissues.glandular.tags = [1,2,3]
+#
+# # Surface tags for skin and chest
+# tissues.skin.tags = [19,20]
+# tissues.chest.tags = [21,22]
+#
+# #Remove lingering elements
+# build.remove(build.getEntities(dim2))
+# build.remove(build.getEntities(dim1))
+# build.remove(build.getEntities(dim0))
+#
+# # Synchronize the geometry before assigning meshing
+# build.synchronize()
+#
+# ####################
+# # Generate 3D mesh #
+# ####################
+#
+# # Assign global mesh density by scaling mesh with length of mesh curves
+# curve_list = build.getEntities(dim1)
+# for curve in curve_list:
+#     length_curve = build.getMass(dim1, curve[1])
+#     mesh.setTransfiniteCurve(curve[1], int(settings.model.mesh.density * length_curve))
+#
+# # Generate mesh up to 3D, set to predefined mesh order, and optionally optimize
+# mesh.generate(dim3)
+# mesh.setOrder(settings.model.mesh.order)
+# if settings.model.mesh.optimize:
+#     if settings.model.mesh.order == 1:
+#         mesh.optimize()
+#     else:
+#         mesh.optimize("HighOrder")
+#
+# # Here we loop over the tissues and assign the nodes, elements, etc. to the different fields.
+# for name in tissues.model_fields:
+#     if getattr(tissues, name).dim == 2:  # noqa: PLR2004
+#         getattr(tissues, name).type = settings.model.mesh.elem_type_surface
+#     else:
+#         getattr(tissues, name).type = settings.model.mesh.elem_type_volume
+#
+#     tags = getattr(tissues, name).tags
+#
+#     if isinstance(tags, list):
+#         elements = []
+#         nodes = []
+#         for tag in tags:
+#             elements.append(mesh.getElements(getattr(tissues, name).dim, tag)[1][0])
+#             nodes.append(mesh.getElements(getattr(tissues, name).dim, tag)[2][0])
+#         elements = [int(item) for sublist in elements for item in sublist]
+#         nodes = np.array([int(item) for sublist in nodes for item in sublist])
+#         element_type = mesh.getElements(getattr(tissues, name).dim, tag)[0][0]
+#         num_nodes = int(mesh.getElementProperties(element_type)[3])
+#         getattr(tissues, name).elements = elements
+#         getattr(tissues, name).nodes = nodes.reshape(-1, num_nodes)
+#     else:
+#         element_type, elements, nodes = mesh.getElements(getattr(tissues, name).dim, getattr(tissues, name).tags)
+#         num_nodes = mesh.getElementProperties(element_type[0])[3]
+#         getattr(tissues, name).elements = elements[0]
+#         getattr(tissues, name).nodes = nodes[0].reshape(-1, num_nodes)
 
 #########################################
 # Extract all nodes and prep for output #
