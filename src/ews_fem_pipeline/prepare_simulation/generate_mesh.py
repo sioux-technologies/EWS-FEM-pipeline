@@ -19,6 +19,8 @@ def generate_mesh(settings: Settings) -> MeshParts:
 
     mesh_parts = MeshParts()
 
+    radius_nipple = 0.005
+    thickness_adipose = 0.01
     gmsh.initialize()
     gmsh.model.add("breast")
     # Set option to save all elements in mesh
@@ -45,108 +47,78 @@ def generate_mesh(settings: Settings) -> MeshParts:
     loops = {}
     surfs = {}
 
+    radius_arc1 = settings.model.geometry.radius - radius_nipple
     points[1] = build.addPoint(0, 0, 0, settings.model.mesh.ls, 1)  # Origin point
-    points[2] = build.addPoint(0, settings.model.geometry.radius, 0, settings.model.mesh.ls, 2)  # Point along rotation axis
-    points[3] = build.addPoint(0, 0, settings.model.geometry.radius, settings.model.mesh.ls,
-                        3)  # Point perpendicular up to rotation axis
+    points[2] = build.addPoint(0, radius_arc1, 0, settings.model.mesh.ls, 2)  # Point along rotation axis
 
-    lines[1] = build.addLine(points[1], points[2], 1)
-    lines[2] = build.addCircleArc(points[2], points[1], points[3], 2)  # Lower circle arc of breast
-    lines[3] = build.addLine(points[3], points[1], 3)  # Line perpendicular up to rotation axis
+    circle_points = {}
+    top_points = {}
+    bottom_points = {}
+    circle_arcs = {}
+    bottom_circle_lines = {}
+    top_circle_lines = {}
+    n_points = 40
 
-    loops[1] = build.addCurveLoop([lines[1], lines[2], lines[3]], 1)
-    surfs[1] = build.addPlaneSurface([loops[1]], 1)
+    for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points, endpoint=False), start=1):
+        radius_var = radius_arc1 * (1 + 1 / 8 * (np.cos(theta) + 1) + 1 / 32 * np.cos(3 * theta))
+        bottom_points[i] = build.addPoint(radius_nipple * np.cos(theta),
+                                          radius_arc1 - (
+                                                      radius_var / (np.sin(2 * np.arctan(radius_arc1 / radius_var)))),
+                                          radius_nipple * np.sin(theta), settings.model.mesh.ls)
+        circle_points[i] = build.addPoint((radius_var + radius_nipple) * np.cos(theta), 0,
+                                          (radius_var + radius_nipple) * np.sin(theta), settings.model.mesh.ls)
+        top_points[i] = build.addPoint(radius_nipple * np.cos(theta), radius_arc1, radius_nipple * np.sin(theta))
+    for i in range(1, n_points + 1):
+        circle_arcs[i] = build.addCircleArc(top_points[i], bottom_points[i], circle_points[i])
+        bottom_circle_lines[i] = build.addLine(circle_points[i], circle_points[(i % n_points + 1)])
+        top_circle_lines[i] = build.addLine(top_points[i], top_points[(i % n_points + 1)])
+    for i in range(1, n_points + 1):
+        loop = build.addCurveLoop(
+            [circle_arcs[i], bottom_circle_lines[i], top_circle_lines[i], circle_arcs[(i) % n_points + 1]])
+        surf = build.addSurfaceFilling(loop)
 
-    points[4] = build.addPoint(0, -settings.model.geometry.left_position_ellipse, 0, settings.model.mesh.ls, 4)
-    points[5] = build.addPoint(0, settings.model.geometry.radius + settings.model.geometry.position_nipple, 0, settings.model.mesh.ls, 5)
-    points[6] = build.addPoint(0, (settings.model.geometry.radius + settings.model.geometry.position_nipple - settings.model.geometry.left_position_ellipse) / 2,
-                        -settings.model.geometry.position_center_ellipse,
-                        settings.model.mesh.ls, 6)
-
-    lines[4] = build.addEllipseArc(points[4], points[6], points[5], points[5], 4)
-    lines[5] = build.addLine(points[4], points[5], 5)
-
-    loops[2] = build.addCurveLoop([lines[4], lines[5]], 2)
-    surfs[2] = build.addPlaneSurface([loops[2]], 2)
-
-    # Add back side breast
-    points[7] = build.addPoint(0, -settings.model.geometry.thickness_chest_wall, settings.model.geometry.radius, settings.model.mesh.ls, 7)
-    points[8] = build.addPoint(0, -settings.model.geometry.thickness_chest_wall, 0, settings.model.mesh.ls, 8)
-
-    lines[6] = build.addLine(points[3], points[7], 6)
-    lines[7] = build.addLine(points[7], points[8], 7)
-    lines[8] = build.addLine(points[8], points[1], 8)
-
-    loops[3] = build.addCurveLoop(([lines[8], lines[3], lines[6], lines[7]]))
-    surfs[3] = build.addPlaneSurface([loops[3]])
-
-    # Fragment entire mesh in different regions (Assigns news points to intersection of curves)
-    build.fragment([(dim2, surfs[1]), (dim2, surfs[2])], [(dim2, surfs[3])])
-
-    # Get indices of all (including newly formed due to fragment) objects
     all_points = build.getEntities(dim0)
-    all_lines = build.getEntities(dim1)
+    build.remove(all_points)  # remove bottom circle points and other unattached points
+
+    bottom_surf = build.addCurveLoop(list(bottom_circle_lines.values()))
+    bottom_surf = build.addPlaneSurface([bottom_surf])  # n = n_points + 1
+
+    nipple_surf = build.addCurveLoop(list(top_circle_lines.values()))
+    nipple_surf = build.addPlaneSurface([nipple_surf])  # n = n_points + 2
+
+    surfloop_adipose = build.addSurfaceLoop(list(range(1, n_points + 3)))
+    build.addVolume([surfloop_adipose], tag=3)
+
+    scaling_factor = 1 - (thickness_adipose / radius_arc1)
+    build.copy([(3, 3)])  # tag = 4
+    build.dilate([(3, 4)], 0, 1 / 2 * radius_arc1, 0, scaling_factor, scaling_factor, scaling_factor)
+    build.addCylinder(0, radius_arc1 - 0.02, 0, 0, 0.025, 0, radius_nipple, tag=5)
+    build.fuse([(3, 5)], [(3, 4)], tag=6)  # fuse duct/nipple with glandular tissue
+    build.cut([(3, 3)], [(3, 6)], removeTool=False)
+    current_volumes = build.getEntities(dim3)
+
     all_surfaces = build.getEntities(dim2)
+    all_volumes = build.getEntities(dim3)
 
-    # Name all points with convention p{tag}
-    for i in range(len(all_points)):
-        idx = all_points[i][1]
-        points[idx] = idx
-
-    # Name all lines with convention l{tag}
-    for i in range(len(all_lines)):
-        idx = all_lines[i][1]
-        lines[idx] = idx
-
-    # Remove all surfaces as we will be rebuilding them
-    build.remove(all_surfaces)
-    # Remove all points that we will not need anymore. Note, first we remove the lines, then the points,
-    # as lines are constructed by connecting points
-    build.remove([
-        (dim1, lines[3]),
-        (dim1, lines[4]),
-        (dim1, lines[5]),
-        (dim1, lines[7]),
-        (dim1, lines[8]),
-        (dim1, lines[9]),
-        (dim1, lines[11]),
-        (dim1, lines[12]),
-        (dim1, lines[14]),
-    ])
-    build.remove([
-        (dim0, points[6]),
-        (dim0, points[10]),
-        (dim0, points[12]),
-        (dim0, points[14]),
-    ])
-
-    # Add lines to complete reconstruction
-    lines[3] = build.addLine(points[16], points[13], 3)
-    lines[4] = build.addLine(points[8], points[15], 4)
-
-    ###############################################
-    # Construct 3D geometry by revolving quadrant #
-    ###############################################
-
-    # Get all lines and revolves around major axis
-    all_current_lines = build.getEntities(dim1)
-    build.revolve(all_current_lines, 0, 0, 0, 0, 1, 0, 2 * math.pi)
-
+    build.fragment(all_volumes, all_surfaces)
     # Alias for tissues. Only includes tissues, no nodes
     tissues = mesh_parts.tissue_parts
 
-    # Construct and assign surfaces and volumes for different tissues
-    surfloop_gland = build.addSurfaceLoop([1, 2, 5])
-    surfloop_fat = build.addSurfaceLoop([1, 2, 3, 4, 6])
+    # Construct and assign surfaces and volumes for different tissues ###
+
+    build.synchronize()
+    all_final_surfaces = build.getEntities(dim2)
+    all_final_lines = build.getEntities(dim1)
+    all_final_volumes = build.getEntities(dim3)
+
+    tissues.adipose.tags = [all_final_volumes[0][1]]
+    tissues.glandular.tags = [all_final_volumes[1][1]]
 
     # Surface tags for skin and chest
-    tissues.skin.tags = [9, 10]
-    tissues.chest.tags = 11
-    tissues.glandular.tags = build.addVolume([surfloop_gland])
-    tissues.adipose.tags = build.addVolume([surfloop_fat])
+    tissues.skin.tags = [46, 48] + list(range(50, 68))
+    tissues.chest.tags = [49]
 
     # Remove lingering elements
-    build.fragment([(dim3, 1)], [(dim3, 2)])
     build.remove(build.getEntities(dim2))
     build.remove(build.getEntities(dim1))
     build.remove(build.getEntities(dim0))
