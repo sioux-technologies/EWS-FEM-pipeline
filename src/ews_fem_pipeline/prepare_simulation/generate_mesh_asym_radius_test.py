@@ -78,16 +78,21 @@ for i, theta in enumerate(np.linspace(0, 2*math.pi, n_points, endpoint=False), s
     top_points[i] = build.addPoint(radius_nipple*np.cos(theta), radius_arc1, radius_nipple*np.sin(theta))
 for i in range(1, n_points+1):
     circle_arcs[i] = build.addCircleArc(top_points[i], bottom_points[i], circle_points[i])
-    bottom_circle_lines[i] = build.addLine(circle_points[i], circle_points[(i%n_points+1)])
+    #bottom_circle_lines[i] = build.addLine(circle_points[i], circle_points[(i%n_points+1)])
     top_circle_lines[i] = build.addLine(top_points[i], top_points[(i%n_points+1)])
+all_points = build.getEntities(dim0)
+bottom_circle_lines = build.addSpline(list(circle_points.values())+[circle_points[1]])
+bottom_circle_lines, _ = build.fragment([(1, bottom_circle_lines)], all_points)
+bottom_circle_lines = np.array(bottom_circle_lines)[np.where(np.array(bottom_circle_lines)[:, 0] == 1), 1][0]
+
 for i in range(1, n_points+1):
-    loop = build.addCurveLoop([circle_arcs[i], bottom_circle_lines[i], top_circle_lines[i], circle_arcs[(i)%n_points+1]])
+    loop = build.addCurveLoop([circle_arcs[i], top_circle_lines[i], circle_arcs[(i)%n_points+1], bottom_circle_lines[i-1]])
     surf = build.addSurfaceFilling(loop)
 
 all_points = build.getEntities(dim0)
 build.remove(all_points) #remove bottom circle points and other unattached points
 
-bottom_surf = build.addCurveLoop(list(bottom_circle_lines.values()))
+bottom_surf = build.addCurveLoop(bottom_circle_lines)
 bottom_surf = build.addPlaneSurface([bottom_surf]) #n = n_points + 1
 
 nipple_surf = build.addCurveLoop(list(top_circle_lines.values()))
