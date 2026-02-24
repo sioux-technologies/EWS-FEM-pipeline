@@ -78,7 +78,6 @@ for i, theta in enumerate(np.linspace(0, 2*math.pi, n_points, endpoint=False), s
     top_points[i] = build.addPoint(radius_nipple*np.cos(theta), radius_arc1, radius_nipple*np.sin(theta))
 for i in range(1, n_points+1):
     circle_arcs[i] = build.addCircleArc(top_points[i], bottom_points[i], circle_points[i])
-    #bottom_circle_lines[i] = build.addLine(circle_points[i], circle_points[(i%n_points+1)])
     top_circle_lines[i] = build.addLine(top_points[i], top_points[(i%n_points+1)])
 all_points = build.getEntities(dim0)
 bottom_circle_lines = build.addSpline(list(circle_points.values())+[circle_points[1]])
@@ -107,7 +106,6 @@ build.dilate([(3,4)], 0,1/2*radius_arc1, 0, scaling_factor, scaling_factor, scal
 build.addCylinder(0,radius_arc1-0.02, 0, 0, 0.025, 0, radius_nipple, tag = 5)
 build.fuse([(3,5)], [(3,4)], tag = 6) #fuse duct/nipple with glandular tissue
 build.cut([(3,3)], [(3,6)], removeTool= False)
-current_volumes = build.getEntities(dim3)
 
 all_surfaces = build.getEntities(dim2)
 all_volumes = build.getEntities(dim3)
@@ -117,8 +115,6 @@ build.fragment(all_volumes, all_surfaces)
 tissues = mesh_parts.tissue_parts
 
 # Construct and assign surfaces and volumes for different tissues ###
-
-build.synchronize()
 all_final_surfaces = build.getEntities(dim2)
 all_final_lines = build.getEntities(dim1)
 all_final_volumes = build.getEntities(dim3)
