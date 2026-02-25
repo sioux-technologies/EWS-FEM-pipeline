@@ -16,11 +16,8 @@ def generate_mesh(settings: Settings) -> MeshParts:
     and geometry classes. These settings are explained in detail in model_settings.py under the MeshSettings and GeometrySettings
     classes.
     """
-
     mesh_parts = MeshParts()
 
-    radius_nipple = 0.005
-    thickness_adipose = 0.01
     gmsh.initialize()
     gmsh.model.add("breast")
     # Set option to save all elements in mesh
@@ -47,55 +44,52 @@ def generate_mesh(settings: Settings) -> MeshParts:
     loops = {}
     surfs = {}
 
-    radius_arc1 = settings.model.geometry.radius - radius_nipple
-    points[1] = build.addPoint(0, 0, 0, settings.model.mesh.ls, 1)  # Origin point
-    points[2] = build.addPoint(0, radius_arc1, 0, settings.model.mesh.ls, 2)  # Point along rotation axis
 
-    circle_points = {}
-    top_points = {}
-    bottom_points = {}
-    circle_arcs = {}
-    bottom_circle_lines = {}
-    top_circle_lines = {}
-    n_points = 40
+    points[1] = build.addPoint(0, 0, 0, settings.model.mesh.ls, 1)  # Origin point
+    points[2] = build.addPoint(0, settings.model.geometry.radius_breast, 0, settings.model.mesh.ls, 2)  # Point along rotation axis
+
+    # Get indices of all (including newly formed due to fragment) objects
+    all_points = build.getEntities(dim0)
+    all_lines = build.getEntities(dim1)
+    all_surfaces = build.getEntities(dim2)
+
+    # Name all points with convention p{tag}
+    for i in range(len(all_points)):
+        idx = all_points[i][1]
+        points[idx] = idx
+
+    # Name all lines with convention l{tag}
+    for i in range(len(all_lines)):
+        idx = all_lines[i][1]
+        lines[idx] = idx
+
+    n_points = 20  # numbers of fitting steps around the axis
+
+    # Initialize array for saving points
+    surface_points = np.empty((n_points + 1, 5), dtype=int)
 
     for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points, endpoint=False), start=1):
-        radius_var = radius_arc1 * (1 + 1 / 8 * (np.cos(theta) + 1) + 1 / 32 * np.cos(3 * theta))
-        bottom_points[i] = build.addPoint(radius_nipple * np.cos(theta),
-                                          radius_arc1 - (
-                                                      radius_var / (np.sin(2 * np.arctan(radius_arc1 / radius_var)))),
-                                          radius_nipple * np.sin(theta), settings.model.mesh.ls)
-        circle_points[i] = build.addPoint((radius_var + radius_nipple) * np.cos(theta), 0,
-                                          (radius_var + radius_nipple) * np.sin(theta), settings.model.mesh.ls)
-        top_points[i] = build.addPoint(radius_nipple * np.cos(theta), radius_arc1, radius_nipple * np.sin(theta))
-    for i in range(1, n_points + 1):
-        circle_arcs[i] = build.addCircleArc(top_points[i], bottom_points[i], circle_points[i])
-        bottom_circle_lines[i] = build.addLine(circle_points[i], circle_points[(i % n_points + 1)])
-        top_circle_lines[i] = build.addLine(top_points[i], top_points[(i % n_points + 1)])
-    for i in range(1, n_points + 1):
-        loop = build.addCurveLoop(
-            [circle_arcs[i], bottom_circle_lines[i], top_circle_lines[i], circle_arcs[(i) % n_points + 1]])
-        surf = build.addSurfaceFilling(loop)
+        radius_var = settings.model.geometry.radius_breast * (1 + 1 / 8 * (np.cos(theta) + 1) + 1 / 32 * np.cos(3 * theta))
+        radius_extra = radius_var / (np.sin(2 * np.arctan(settings.model.geometry.radius_breast / radius_var)))
+        for j, phi in enumerate(np.linspace(0, 2 * np.arctan(settings.model.geometry.radius_breast / radius_var), 5)):
+            surface_points[i - 1, j] = build.addPoint(radius_extra * np.cos(theta) * np.sin(phi),
+                                                      radius_extra * np.cos(phi) + settings.model.geometry.radius_breast - radius_extra,
+                                                      radius_extra * np.sin(theta) * np.sin(phi))
 
     all_points = build.getEntities(dim0)
-    build.remove(all_points)  # remove bottom circle points and other unattached points
+    surface_points[-1, :] = surface_points[0, :]
+    build.addBSplineSurface(surface_points.flatten(order='F'), n_points + 1, tag=3)
 
-    bottom_surf = build.addCurveLoop(list(bottom_circle_lines.values()))
-    bottom_surf = build.addPlaneSurface([bottom_surf])  # n = n_points + 1
+    bottom_surf = build.addCurveLoop([3])
+    bottom_surf = build.addPlaneSurface([bottom_surf], tag=4)  # n = n_points + 1
 
-    nipple_surf = build.addCurveLoop(list(top_circle_lines.values()))
-    nipple_surf = build.addPlaneSurface([nipple_surf])  # n = n_points + 2
-
-    surfloop_adipose = build.addSurfaceLoop(list(range(1, n_points + 3)))
-    build.addVolume([surfloop_adipose], tag=3)
-
-    scaling_factor = 1 - (thickness_adipose / radius_arc1)
-    build.copy([(3, 3)])  # tag = 4
-    build.dilate([(3, 4)], 0, 1 / 2 * radius_arc1, 0, scaling_factor, scaling_factor, scaling_factor)
-    build.addCylinder(0, radius_arc1 - 0.02, 0, 0, 0.025, 0, radius_nipple, tag=5)
-    build.fuse([(3, 5)], [(3, 4)], tag=6)  # fuse duct/nipple with glandular tissue
-    build.cut([(3, 3)], [(3, 6)], removeTool=False)
-    current_volumes = build.getEntities(dim3)
+    surfloop_adipose = build.addSurfaceLoop([3, 4], tag=1)
+    build.addVolume([surfloop_adipose], tag=1)
+    build.copy([(3, 1)])  # tag = 2
+    build.dilate([(3, 2)], 0, 1 / 2 * settings.model.geometry.radius_breast, 0, settings.model.geometry.scaling_factor, settings.model.geometry.scaling_factor, settings.model.geometry.scaling_factor)
+    build.addCylinder(0, settings.model.geometry.radius_breast - 0.02, 0, 0, 0.024, 0, settings.model.geometry.radius_nipple, tag=3)
+    build.fuse([(3, 2)], [(3, 3)], tag=4)  # fuse duct/nipple with glandular tissue
+    build.cut([(3, 1)], [(3, 4)], removeTool=False)
 
     all_surfaces = build.getEntities(dim2)
     all_volumes = build.getEntities(dim3)
@@ -105,8 +99,6 @@ def generate_mesh(settings: Settings) -> MeshParts:
     tissues = mesh_parts.tissue_parts
 
     # Construct and assign surfaces and volumes for different tissues ###
-
-    build.synchronize()
     all_final_surfaces = build.getEntities(dim2)
     all_final_lines = build.getEntities(dim1)
     all_final_volumes = build.getEntities(dim3)
@@ -115,8 +107,8 @@ def generate_mesh(settings: Settings) -> MeshParts:
     tissues.glandular.tags = [all_final_volumes[1][1]]
 
     # Surface tags for skin and chest
-    tissues.skin.tags = [46, 48] + list(range(50, 68))
-    tissues.chest.tags = [49]
+    tissues.skin.tags = [5, 12, 13]
+    tissues.chest.tags = [7]
 
     # Remove lingering elements
     build.remove(build.getEntities(dim2))
@@ -171,6 +163,7 @@ def generate_mesh(settings: Settings) -> MeshParts:
             num_nodes = mesh.getElementProperties(element_type[0])[3]
             getattr(tissues, name).elements = elements[0]
             getattr(tissues, name).nodes = nodes[0].reshape(-1, num_nodes)
+
 
     #########################################
     # Extract all nodes and prep for output #
