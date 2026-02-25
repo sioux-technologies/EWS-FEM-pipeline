@@ -20,7 +20,9 @@ class GeometrySettings(BaseModel):
                                                         in all three dimensions.
     """
 
-    radius: float = 0.07
+    radius_breast: float = 0.07
+    asym_p1: float = 0.12
+    asym_p2: float = 0.03
     thickness_chest_wall: float = 0.002
     radius_nipple: float = 0.005
     scaling_factor_glandular: float = 0.8
