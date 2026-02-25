@@ -36,75 +36,61 @@ def generate_mesh(settings: Settings) -> MeshParts:
     mesh = gmsh.model.mesh
 
     #############################
-    # Construct breast quadrant #
+    # Construct breast surface  #
     #############################
-
-    points = {}
-    lines = {}
-    loops = {}
-    surfs = {}
-
-
-    points[1] = build.addPoint(0, 0, 0, settings.model.mesh.ls, 1)  # Origin point
-    points[2] = build.addPoint(0, settings.model.geometry.radius_breast, 0, settings.model.mesh.ls, 2)  # Point along rotation axis
-
-    # Get indices of all (including newly formed due to fragment) objects
-    all_points = build.getEntities(dim0)
-    all_lines = build.getEntities(dim1)
-    all_surfaces = build.getEntities(dim2)
-
-    # Name all points with convention p{tag}
-    for i in range(len(all_points)):
-        idx = all_points[i][1]
-        points[idx] = idx
-
-    # Name all lines with convention l{tag}
-    for i in range(len(all_lines)):
-        idx = all_lines[i][1]
-        lines[idx] = idx
-
+    # Points for the breast surface are generated on circle arcs with variable radius to create asymmetry
     n_points = 20  # numbers of fitting steps around the axis
 
     # Initialize array for saving points
     surface_points = np.empty((n_points + 1, 5), dtype=int)
 
+    # Rotate around the y-axis
     for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points, endpoint=False), start=1):
         radius_var = settings.model.geometry.radius_breast * (1 + settings.model.geometry.asym_p1 * (np.cos(theta) + 1)
                                                               + settings.model.geometry.asym_p2 * np.cos(3 * theta))
+        #the points are placed on a circle arc with a radius radius_extra > radius_var
         radius_extra = radius_var / (np.sin(2 * np.arctan(settings.model.geometry.radius_breast / radius_var)))
         for j, phi in enumerate(np.linspace(0, 2 * np.arctan(settings.model.geometry.radius_breast / radius_var), 5)):
             surface_points[i - 1, j] = build.addPoint(radius_extra * np.cos(theta) * np.sin(phi),
                                                       radius_extra * np.cos(phi) + settings.model.geometry.radius_breast - radius_extra,
                                                       radius_extra * np.sin(theta) * np.sin(phi))
 
-    all_points = build.getEntities(dim0)
+    # Close the loop
     surface_points[-1, :] = surface_points[0, :]
-    build.addBSplineSurface(surface_points.flatten(order='F'), n_points + 1, tag=3)
+    #Build breast surface
+    build.addBSplineSurface(surface_points.flatten(order='F'), n_points + 1, tag=1)
 
+    # Build chest surface
     bottom_surf = build.addCurveLoop([3])
-    bottom_surf = build.addPlaneSurface([bottom_surf], tag=4)  # n = n_points + 1
+    build.addPlaneSurface([bottom_surf], tag=2)
 
-    surfloop_adipose = build.addSurfaceLoop([3, 4], tag=1)
-    build.addVolume([surfloop_adipose], tag=1)
+    # Build breast volume
+    build.addSurfaceLoop([1, 2], tag=1)
+    build.addVolume([1], tag=1)
+
+    # Build glandular tissue by copying and downscaling breast volume
     build.copy([(3, 1)])  # tag = 2
     build.dilate([(3, 2)], 0, 1 / 2 * settings.model.geometry.radius_breast, 0,
                  settings.model.geometry.scaling_factor_glandular, settings.model.geometry.scaling_factor_glandular,
                  settings.model.geometry.scaling_factor_glandular)
+    # Add duct and nipple as a cylinder
     build.addCylinder(0, settings.model.geometry.radius_breast - 0.02, 0, 0, 0.024, 0,
                       settings.model.geometry.radius_nipple, tag=3)
-    build.fuse([(3, 2)], [(3, 3)], tag=4)  # fuse duct/nipple with glandular tissue
+    # fuse duct/nipple with glandular tissue
+    build.fuse([(3, 2)], [(3, 3)], tag=4)
+    # Separate glandular from adipose tissue
     build.cut([(3, 1)], [(3, 4)], removeTool=False)
 
     all_surfaces = build.getEntities(dim2)
     all_volumes = build.getEntities(dim3)
 
+    # Fragment full model. Ensures no surfaces and volumes overlap. Note: replaces all tags!
     build.fragment(all_volumes, all_surfaces)
+
     # Alias for tissues. Only includes tissues, no nodes
     tissues = mesh_parts.tissue_parts
 
     # Construct and assign surfaces and volumes for different tissues ###
-    all_final_surfaces = build.getEntities(dim2)
-    all_final_lines = build.getEntities(dim1)
     all_final_volumes = build.getEntities(dim3)
 
     tissues.adipose.tags = [all_final_volumes[0][1]]
