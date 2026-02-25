@@ -69,7 +69,8 @@ def generate_mesh(settings: Settings) -> MeshParts:
     surface_points = np.empty((n_points + 1, 5), dtype=int)
 
     for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points, endpoint=False), start=1):
-        radius_var = settings.model.geometry.radius_breast * (1 + 1 / 8 * (np.cos(theta) + 1) + 1 / 32 * np.cos(3 * theta))
+        radius_var = settings.model.geometry.radius_breast * (1 + settings.model.geometry.asym_p1 * (np.cos(theta) + 1)
+                                                              + settings.model.geometry.asym_p2 * np.cos(3 * theta))
         radius_extra = radius_var / (np.sin(2 * np.arctan(settings.model.geometry.radius_breast / radius_var)))
         for j, phi in enumerate(np.linspace(0, 2 * np.arctan(settings.model.geometry.radius_breast / radius_var), 5)):
             surface_points[i - 1, j] = build.addPoint(radius_extra * np.cos(theta) * np.sin(phi),
@@ -86,8 +87,11 @@ def generate_mesh(settings: Settings) -> MeshParts:
     surfloop_adipose = build.addSurfaceLoop([3, 4], tag=1)
     build.addVolume([surfloop_adipose], tag=1)
     build.copy([(3, 1)])  # tag = 2
-    build.dilate([(3, 2)], 0, 1 / 2 * settings.model.geometry.radius_breast, 0, settings.model.geometry.scaling_factor, settings.model.geometry.scaling_factor, settings.model.geometry.scaling_factor)
-    build.addCylinder(0, settings.model.geometry.radius_breast - 0.02, 0, 0, 0.024, 0, settings.model.geometry.radius_nipple, tag=3)
+    build.dilate([(3, 2)], 0, 1 / 2 * settings.model.geometry.radius_breast, 0,
+                 settings.model.geometry.scaling_factor_glandular, settings.model.geometry.scaling_factor_glandular,
+                 settings.model.geometry.scaling_factor_glandular)
+    build.addCylinder(0, settings.model.geometry.radius_breast - 0.02, 0, 0, 0.024, 0,
+                      settings.model.geometry.radius_nipple, tag=3)
     build.fuse([(3, 2)], [(3, 3)], tag=4)  # fuse duct/nipple with glandular tissue
     build.cut([(3, 1)], [(3, 4)], removeTool=False)
 
