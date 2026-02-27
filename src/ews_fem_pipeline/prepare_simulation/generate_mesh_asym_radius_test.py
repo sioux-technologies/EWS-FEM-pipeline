@@ -13,8 +13,6 @@ logger = logging.getLogger(__name__)
 
 mesh_parts = MeshParts()
 settings = Settings()
-radius_nipple = 0.005
-thickness_adipose = 0.01
 gmsh.initialize()
 gmsh.model.add("breast")
 # Set option to save all elements in mesh
@@ -33,110 +31,91 @@ build = gmsh.model.occ
 mesh = gmsh.model.mesh
 
 #############################
-# Construct breast quadrant #
+# Construct breast surface  #
 #############################
+# Points for the breast surface are generated on circle arcs with variable radius to create asymmetry
+# 3/4 of a "sphere" are generated, this will be cut down later
+n_points = 20  # numbers of fitting steps around the axis
 
-points = {}
-lines = {}
-loops = {}
-surfs = {}
+# Initialize array for saving points
+surface_points = np.empty((n_points, 8), dtype=int)
 
-radius_arc1 = settings.model.geometry.radius-radius_nipple
-points[1] = build.addPoint(0, 0, 0, settings.model.mesh.ls, 1)  # Origin point
-points[2] = build.addPoint(0, radius_arc1, 0, settings.model.mesh.ls, 2)  # Point along rotation axis
+angle_nipple = 1/8*np.pi
+# Rotate around the y-axis
+for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points), start=1):
+    radius_var = settings.model.geometry.radius_breast * (1 + settings.model.geometry.asym_p1 * (np.cos(theta) + 1)
+                                                          + settings.model.geometry.asym_p2 * (np.cos(3 * theta) + 1))
+    # the points are placed on a circle arc with a radius radius_extra > radius_var
+    radius_extra = radius_var / (np.sin(2 * np.arctan(settings.model.geometry.radius_breast / radius_var)))
+    for j, phi in enumerate(np.linspace(0, 3/4*np.pi, 8)):
+        surface_points[i - 1, j] = build.addPoint(radius_extra * np.cos(theta) * np.sin(phi),
+                                                  radius_extra * np.cos(
+                                                      phi) + settings.model.geometry.radius_breast - radius_extra,
+                                                  radius_extra * np.sin(theta) * np.sin(phi))
 
-# Get indices of all (including newly formed due to fragment) objects
-all_points = build.getEntities(dim0)
-all_lines = build.getEntities(dim1)
-all_surfaces = build.getEntities(dim2)
+# Close the loop
+# Build breast surface
+build.addBSplineSurface(surface_points.flatten(order='F'), n_points, tag=1)
+#remove control points
+build.remove(build.getEntities(dim0))
 
-# Name all points with convention p{tag}
-for i in range(len(all_points)):
-    idx = all_points[i][1]
-    points[idx] = idx
+# Build shape of torso
+build.addCylinder(0, -(1/2*settings.model.geometry.radius_breast/np.sin(1/2*angle_nipple)), -0.1,
+                0, 0, 0.2,
+                (1/2*settings.model.geometry.radius_breast/np.sin(1/2*angle_nipple)), tag = 1)
+# Cut torso from breast shape
+build.cut([(2,1)], [(3,1)], removeTool = True)
 
-# Name all lines with convention l{tag}
-for i in range(len(all_lines)):
-    idx = all_lines[i][1]
-    lines[idx] = idx
-
-circle_points = {}
-top_points = {}
-bottom_points = {}
-circle_arcs = {}
-bottom_circle_lines = {}
-top_circle_lines = {}
-n_points = 20
+# Build breast volume
+bottom_surf = build.addCurveLoop([3])
+build.addSurfaceFilling(bottom_surf)
+build.addSurfaceLoop([1,2])
+build.addVolume([1], tag=1)
 
 
-for i, theta in enumerate(np.linspace(0, 2*math.pi, n_points, endpoint=False), start=1):
-    radius_var = radius_arc1 * (1+ 1/8*(np.cos(theta)+1) + 1/32*np.cos(3*theta))
-    bottom_points[i] = build.addPoint(radius_nipple*np.cos(theta),
-                radius_arc1-(radius_var/(np.sin(2*np.arctan(radius_arc1/radius_var)))),
-                radius_nipple*np.sin(theta), settings.model.mesh.ls)
-    circle_points[i] = build.addPoint((radius_var+radius_nipple)*np.cos(theta), 0, (radius_var+radius_nipple)*np.sin(theta), settings.model.mesh.ls)
-    top_points[i] = build.addPoint(radius_nipple*np.cos(theta), radius_arc1, radius_nipple*np.sin(theta))
-for i in range(1, n_points+1):
-    circle_arcs[i] = build.addCircleArc(top_points[i], bottom_points[i], circle_points[i])
-    top_circle_lines[i] = build.addLine(top_points[i], top_points[(i%n_points+1)])
-all_points = build.getEntities(dim0)
-bottom_circle_lines = build.addSpline(list(circle_points.values())+[circle_points[1]])
-bottom_circle_lines, _ = build.fragment([(1, bottom_circle_lines)], all_points)
-bottom_circle_lines = np.array(bottom_circle_lines)[np.where(np.array(bottom_circle_lines)[:, 0] == 1), 1][0]
-
-for i in range(1, n_points+1):
-    loop = build.addCurveLoop([circle_arcs[i], top_circle_lines[i], circle_arcs[(i)%n_points+1], bottom_circle_lines[i-1]])
-    surf = build.addSurfaceFilling(loop)
-
-all_points = build.getEntities(dim0)
-build.remove(all_points) #remove bottom circle points and other unattached points
-
-bottom_surf = build.addCurveLoop(bottom_circle_lines)
-bottom_surf = build.addPlaneSurface([bottom_surf]) #n = n_points + 1
-
-nipple_surf = build.addCurveLoop(list(top_circle_lines.values()))
-nipple_surf = build.addPlaneSurface([nipple_surf]) #n = n_points + 2
-
-surfloop_adipose = build.addSurfaceLoop(list(range(1,n_points+3)))
-build.addVolume([surfloop_adipose], tag = 3)
-
-scaling_factor = 1-(thickness_adipose/radius_arc1)
-build.copy([(3,3)]) #tag = 4
-build.dilate([(3,4)], 0,1/2*radius_arc1, 0, scaling_factor, scaling_factor, scaling_factor)
-build.addCylinder(0,radius_arc1-0.02, 0, 0, 0.025, 0, radius_nipple, tag = 5)
-build.fuse([(3,5)], [(3,4)], tag = 6) #fuse duct/nipple with glandular tissue
-build.cut([(3,3)], [(3,6)], removeTool= False)
+# Build glandular tissue by copying and downscaling breast volume
+build.copy([(3, 1)])  # tag = 2
+build.dilate([(3, 2)], 0, 1 / 2 * settings.model.geometry.radius_breast, 0,
+             settings.model.geometry.scaling_factor_glandular, settings.model.geometry.scaling_factor_glandular,
+             settings.model.geometry.scaling_factor_glandular)
+# Add duct and nipple as a cylinder
+build.addCylinder(0, settings.model.geometry.radius_breast - 0.02, 0, 0, 0.024, 0,
+                  settings.model.geometry.radius_nipple, tag=3)
+# fuse duct/nipple with glandular tissue
+build.fuse([(3, 2)], [(3, 3)], tag=4)
+# Separate glandular from adipose tissue
+build.cut([(3, 1)], [(3, 4)], removeTool=False)
 
 all_surfaces = build.getEntities(dim2)
 all_volumes = build.getEntities(dim3)
 
+# Fragment full model. Ensures no surfaces and volumes overlap. Note: replaces all tags!
 build.fragment(all_volumes, all_surfaces)
+
 # Alias for tissues. Only includes tissues, no nodes
 tissues = mesh_parts.tissue_parts
 
 # Construct and assign surfaces and volumes for different tissues ###
-all_final_surfaces = build.getEntities(dim2)
-all_final_lines = build.getEntities(dim1)
 all_final_volumes = build.getEntities(dim3)
 
 tissues.adipose.tags = [all_final_volumes[0][1]]
 tissues.glandular.tags = [all_final_volumes[1][1]]
 
 # Surface tags for skin and chest
-tissues.skin.tags = [46, 48] + list(range(50, 68))
-tissues.chest.tags = [49]
+tissues.skin.tags = [7, 10, 11]
+tissues.chest.tags = [9]
 
-#Remove lingering elements
+# Remove lingering elements
 build.remove(build.getEntities(dim2))
 build.remove(build.getEntities(dim1))
 build.remove(build.getEntities(dim0))
 
 # Synchronize the geometry before assigning meshing
 build.synchronize()
-
-####################
+#
+# ###################
 # Generate 3D mesh #
-####################
+# ###################
 
 # Assign global mesh density by scaling mesh with length of mesh curves
 curve_list = build.getEntities(dim1)
@@ -193,7 +172,7 @@ sorted_ids = node_tags.argsort()
 mesh_parts.nodes.tags = node_tags[sorted_ids]
 mesh_parts.nodes.coords = node_coords[sorted_ids]
 build.synchronize()
-
+mesh.generate()
 
 gmsh.write(r'C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\output\test.msh')
 gmsh.finalize()
