@@ -39,34 +39,50 @@ def generate_mesh(settings: Settings) -> MeshParts:
     # Construct breast surface  #
     #############################
     # Points for the breast surface are generated on circle arcs with variable radius to create asymmetry
-    n_points = 20  # numbers of fitting steps around the axis
+    # 3/4 of a "sphere" are generated, this will be cut down later
+    n_points = 17  # numbers of fitting steps around the axis
 
     # Initialize array for saving points
-    surface_points = np.empty((n_points + 1, 5), dtype=int)
+    surface_points = np.empty((n_points, 8), dtype=int)
 
+    angle_nipple = 1 / 8 * np.pi
     # Rotate around the y-axis
-    for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points, endpoint=False), start=1):
+    for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points), start=1):
         radius_var = settings.model.geometry.radius_breast * (1 + settings.model.geometry.asym_p1 * (np.cos(theta) + 1)
-                                                              + settings.model.geometry.asym_p2 * np.cos(3 * theta))
-        #the points are placed on a circle arc with a radius radius_extra > radius_var
+                                                              + settings.model.geometry.asym_p2 * (
+                                                                          np.cos(3 * theta) + 1))
+        # the points are placed on a circle arc with a radius radius_extra > radius_var
         radius_extra = radius_var / (np.sin(2 * np.arctan(settings.model.geometry.radius_breast / radius_var)))
-        for j, phi in enumerate(np.linspace(0, 2 * np.arctan(settings.model.geometry.radius_breast / radius_var), 5)):
+        for j, phi in enumerate(np.linspace(0, 3 / 4 * np.pi, 8)):
             surface_points[i - 1, j] = build.addPoint(radius_extra * np.cos(theta) * np.sin(phi),
-                                                      radius_extra * np.cos(phi) + settings.model.geometry.radius_breast - radius_extra,
+                                                      radius_extra * np.cos(
+                                                          phi) + settings.model.geometry.radius_breast - radius_extra,
                                                       radius_extra * np.sin(theta) * np.sin(phi))
 
     # Close the loop
-    surface_points[-1, :] = surface_points[0, :]
-    #Build breast surface
-    build.addBSplineSurface(surface_points.flatten(order='F'), n_points + 1, tag=1)
-
-    # Build chest surface
-    bottom_surf = build.addCurveLoop([3])
-    build.addPlaneSurface([bottom_surf], tag=2)
-
+    surface_points = np.concatenate((surface_points, surface_points[1, :].reshape(1, -1)), axis=0)
+    # Define knots and multiplicities for closed surface
+    knots = np.linspace(0, 1, 19)
+    mults = np.concatenate(([2], np.ones(17), [2]))
+    # Build breast surface
+    build.addBSplineSurface(surface_points.flatten(order='F'), len(surface_points), knotsU=knots, multiplicitiesU=mults,
+                            degreeU=2)
     # Build breast volume
+    build.addCurveLoop([3], tag=2)
+    build.addSurfaceFilling(2, tag=2)
     build.addSurfaceLoop([1, 2], tag=1)
     build.addVolume([1], tag=1)
+
+    # remove control points
+    build.remove(build.getEntities(dim0))
+
+    # Build shape of torso
+    build.addCylinder(0, -(1 / 2 * settings.model.geometry.radius_breast / np.sin(1 / 2 * angle_nipple)), -0.1,
+                      0, 0, 0.2,
+                      (1 / 2 * settings.model.geometry.radius_breast / np.sin(1 / 2 * angle_nipple)), tag=2)
+
+    # Cut torso from breast shape
+    build.cut([(3, 1)], [(3, 2)], removeTool=True)
 
     # Build glandular tissue by copying and downscaling breast volume
     build.copy([(3, 1)])  # tag = 2
@@ -74,7 +90,7 @@ def generate_mesh(settings: Settings) -> MeshParts:
                  settings.model.geometry.scaling_factor_glandular, settings.model.geometry.scaling_factor_glandular,
                  settings.model.geometry.scaling_factor_glandular)
     # Add duct and nipple as a cylinder
-    build.addCylinder(0, settings.model.geometry.radius_breast - 0.02, 0, 0, 0.024, 0,
+    build.addCylinder(0, settings.model.geometry.radius_breast - 0.02, 0, 0, 0.025, 0,
                       settings.model.geometry.radius_nipple, tag=3)
     # fuse duct/nipple with glandular tissue
     build.fuse([(3, 2)], [(3, 3)], tag=4)
@@ -97,8 +113,8 @@ def generate_mesh(settings: Settings) -> MeshParts:
     tissues.glandular.tags = [all_final_volumes[1][1]]
 
     # Surface tags for skin and chest
-    tissues.skin.tags = [5, 12, 13]
-    tissues.chest.tags = [7]
+    tissues.skin.tags = [3]
+    tissues.chest.tags = [9]
 
     # Remove lingering elements
     build.remove(build.getEntities(dim2))
