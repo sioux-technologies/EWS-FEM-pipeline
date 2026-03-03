@@ -35,7 +35,7 @@ mesh = gmsh.model.mesh
 #############################
 # Points for the breast surface are generated on circle arcs with variable radius to create asymmetry
 # 3/4 of a "sphere" are generated, this will be cut down later
-n_points = 20  # numbers of fitting steps around the axis
+n_points = 17  # numbers of fitting steps around the axis
 
 # Initialize array for saving points
 surface_points = np.empty((n_points, 8), dtype=int)
@@ -54,37 +54,46 @@ for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points), start=1):
                                                   radius_extra * np.sin(theta) * np.sin(phi))
 
 # Close the loop
+surface_points = np.concatenate((surface_points, surface_points[1, :].reshape(1,-1)), axis = 0)
+knots = np.linspace(0,1, 19)
+mults = np.concatenate(([2], np.ones(17), [2]))
 # Build breast surface
-build.addBSplineSurface(surface_points.flatten(order='F'), n_points, tag=1)
+build.addBSplineSurface(surface_points.flatten(order='F'), len(surface_points), knotsU = knots, multiplicitiesU=mults, degreeU=2)
+
+build.addCurveLoop([3], tag=2)
+build.addSurfaceFilling(2, tag=2)
+build.addSurfaceLoop([1,2], tag=1)
+build.addVolume([1], tag=1)
+
 #remove control points
 build.remove(build.getEntities(dim0))
 
 # Build shape of torso
-build.addCylinder(0, -(1/2*settings.model.geometry.radius_breast/np.sin(1/2*angle_nipple)), -0.1,
-                0, 0, 0.2,
-                (1/2*settings.model.geometry.radius_breast/np.sin(1/2*angle_nipple)), tag = 1)
-# Cut torso from breast shape
-build.cut([(2,1)], [(3,1)], removeTool = True)
-
-# Build breast volume
-bottom_surf = build.addCurveLoop([3])
-build.addSurfaceFilling(bottom_surf)
-build.addSurfaceLoop([1,2])
-build.addVolume([1], tag=1)
-
+build.addCylinder(0, -(1/2*settings.model.geometry.radius_breast/np.sin(1/2*angle_nipple)), -0.15,
+                0, 0, 0.3,
+                (1/2*settings.model.geometry.radius_breast/np.sin(1/2*angle_nipple)), tag = 2)
 
 # Build glandular tissue by copying and downscaling breast volume
-build.copy([(3, 1)])  # tag = 2
-build.dilate([(3, 2)], 0, 1 / 2 * settings.model.geometry.radius_breast, 0,
+build.copy([(3, 1)])  # tag = 3
+all_volumes = build.getEntities(dim3)
+build.dilate([(3, 3)], 0, 1 / 2 * settings.model.geometry.radius_breast, 0,
              settings.model.geometry.scaling_factor_glandular, settings.model.geometry.scaling_factor_glandular,
              settings.model.geometry.scaling_factor_glandular)
+
+# Cut torso from breast shape
+build.cut([(3,1)], [(3,2)], removeTool=False)
+build.translate([(3,2)], 0,
+                (1/2*(1-settings.model.geometry.scaling_factor_glandular))*settings.model.geometry.radius_breast,0)
+build.cut([(3,3)], [(3,2)], removeTool=True)
+
+
 # Add duct and nipple as a cylinder
-build.addCylinder(0, settings.model.geometry.radius_breast - 0.02, 0, 0, 0.024, 0,
-                  settings.model.geometry.radius_nipple, tag=3)
+build.addCylinder(0, settings.model.geometry.radius_breast - 0.02, 0, 0, 0.025, 0,
+                  settings.model.geometry.radius_nipple, tag=4)
 # fuse duct/nipple with glandular tissue
-build.fuse([(3, 2)], [(3, 3)], tag=4)
+build.fuse([(3, 4)], [(3, 3)], tag=5)
 # Separate glandular from adipose tissue
-build.cut([(3, 1)], [(3, 4)], removeTool=False)
+build.cut([(3, 1)], [(3, 5)], removeTool=False)
 
 all_surfaces = build.getEntities(dim2)
 all_volumes = build.getEntities(dim3)
@@ -102,8 +111,8 @@ tissues.adipose.tags = [all_final_volumes[0][1]]
 tissues.glandular.tags = [all_final_volumes[1][1]]
 
 # Surface tags for skin and chest
-tissues.skin.tags = [7, 10, 11]
-tissues.chest.tags = [9]
+tissues.skin.tags = [14]
+tissues.chest.tags = [16]
 
 # Remove lingering elements
 build.remove(build.getEntities(dim2))
@@ -112,7 +121,7 @@ build.remove(build.getEntities(dim0))
 
 # Synchronize the geometry before assigning meshing
 build.synchronize()
-#
+
 # ###################
 # Generate 3D mesh #
 # ###################
