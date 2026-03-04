@@ -4,7 +4,7 @@ import math
 import gmsh
 import numpy as np
 
-from ews_fem_pipeline.prepare_simulation.model_settings import MeshParts
+from ews_fem_pipeline.prepare_simulation.model_settings import MeshParts, TissueParts
 from ews_fem_pipeline.prepare_simulation.simulation_settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -144,7 +144,7 @@ def generate_mesh(settings: Settings) -> MeshParts:
             mesh.optimize("HighOrder")
 
     # Here we loop over the tissues and assign the nodes, elements, etc. to the different fields.
-    for name in tissues.model_fields:
+    for name in TissueParts.model_fields:
         if getattr(tissues, name).dim == 2:  # noqa: PLR2004
             getattr(tissues, name).type = settings.model.mesh.elem_type_surface
         else:
