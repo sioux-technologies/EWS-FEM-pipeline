@@ -191,9 +191,9 @@ class MRTumorProperties(MRProperties):
 class MaterialSettings(ExtendedBaseModel):
     """
     =======================================
-    INPUT PARAMETERS NON-TUMOROUS MATERIALS
+    INPUT PARAMETERS MATERIALS
     =======================================
-    For each non-tumorous tissue [skin, adipose, glandular], we assume the Mooney-Rivlin material type, which takes
+    For glandular, skin and tumor tissue, we assume the Mooney-Rivlin material type, which takes
     three arguments: coef1, the coefficient of the first invariant term; coef2 coefficient of second invariant term; and
     the bulk modulus. Each tissue contains the  same set of inputs listed below, though of course, different settings
     can be assigned per tissue. More for information, see: https://help.febio.org/docs/FEBioUser-4-7/UM47-4.1.2.9.html.
@@ -206,6 +206,22 @@ class MaterialSettings(ExtendedBaseModel):
 
     The mesh, geom and tumor variables have their respective inputs. See class MeshSettings (model_settings.py), class
     GeometrySettings (model_settings.py)
+
+    For the adipose tissue we assume the Holzapfel-Gasser-Ogden material type, which takes 8 input arguments:
+    c, the shear modulus of the ground matrix; k1, the fiber modulus; k2, the fiber exponential coefficient; gamma,
+    the fiber mean orientation angle; kappa, the fiber dispersion; the bulk modulus; fiber direction a, which indicates
+    the directions of the fibers; and fiber direction d, the reference for the fiber direction.
+
+    - density: float [kg/m^3 > 0]       Sets the mass density.
+    - bulk_modulus: float [Pa > 0]      Sets the bulk modulus in the Mooney-Rivlin material type.
+    - pressure_model: str               Sets the pressure model, which should ALWAYS be set to "default".
+    - c : float [Pa > 0]                Sets the shear modulus of the ground matrix (adipose tissue)
+    - k1 : float [Pa > 0]               Sets the fiber modulus of the fibers
+    - k2 : float [Pa > 0]               Sets the fiber exponential coefficient
+    - gamma : float [Deg > 0]           Sets the angle which the fibers act along
+    - kappa : float [0 < 1/3]           Sets the dispersion of the fibers (kappa = 1/3 represents anisotropy)
+
+
     """
     skin: MRProperties = MRProperties(
         density=1100,
