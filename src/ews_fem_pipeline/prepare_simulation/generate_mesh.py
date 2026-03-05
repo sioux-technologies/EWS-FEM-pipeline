@@ -45,7 +45,7 @@ def generate_mesh(settings: Settings) -> MeshParts:
     # Initialize array for saving points
     surface_points = np.empty((n_points, 8), dtype=int)
 
-    angle_nipple = 1 / 8 * np.pi
+    angle_nipple = settings.model.geometry.angle_nipple/180 * math.pi
     # Rotate around the y-axis
     for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points), start=1):
         radius_var = settings.model.geometry.radius_breast * (1 + settings.model.geometry.asym_p1 * (np.cos(theta) + 1)

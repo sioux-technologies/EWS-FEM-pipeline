@@ -18,6 +18,8 @@ class GeometrySettings(BaseModel):
                                                         is subjected to the boundary conditions of the parabolic jump.
     - scaling_factor_glandular: float [0 < f < 1]       Set the ratio of radius of breast : radius of glandular tissue
                                                         in all three dimensions.
+    - angle_nipple: float [deg < 90]                    Sets the angle of the nipple with respect to the body front. The
+                                                        radius of the chest curvature is scaled accordingly.
     """
 
     radius_breast: float = 0.07
@@ -26,6 +28,7 @@ class GeometrySettings(BaseModel):
     thickness_chest_wall: float = 0.002
     radius_nipple: float = 0.005
     scaling_factor_glandular: float = 0.8
+    angle_nipple: float = 30
 
     @property
     def left_position_ellipse(self):
