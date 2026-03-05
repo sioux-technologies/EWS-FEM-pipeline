@@ -139,11 +139,20 @@ def generate_mesh(settings: Settings) -> MeshParts:
     surfloop_gland = build.addSurfaceLoop([1, 2, 5])
     surfloop_fat = build.addSurfaceLoop([1, 2, 3, 4, 6])
 
+    build.addVolume([surfloop_gland], tag=1)
+    build.addVolume([surfloop_fat], tag=2)
+    build.addSphere(settings.material.tumor.position[0], settings.material.tumor.position[1],
+                    settings.material.tumor.position[2], settings.material.tumor.radius, tag=3)
+    build.cut([(3, 1), (3, 2)], [(3, 3)], removeTool=False)
+
+    build.fragment(build.getEntities(dim3), build.getEntities(dim3))
+
     # Surface tags for skin and chest
-    tissues.skin.tags = [9, 10]
-    tissues.chest.tags = 11
-    tissues.glandular.tags = build.addVolume([surfloop_gland])
-    tissues.adipose.tags = build.addVolume([surfloop_fat])
+    tissues.skin.tags = [16, 14]
+    tissues.chest.tags = [19]
+    tissues.glandular.tags = [1]
+    tissues.adipose.tags = [2]
+    tissues.tumor.tags = [3]
 
     # Remove lingering elements
     build.fragment([(dim3, 1)], [(dim3, 2)])
