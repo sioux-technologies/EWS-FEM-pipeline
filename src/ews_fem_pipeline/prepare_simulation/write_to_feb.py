@@ -45,13 +45,16 @@ def write_to_feb(filepath: Path, mesh: MeshParts, settings: Settings):
     material_elem = FEB_element.material.to_xml(parent=root)
 
     skin_elem = FEB_element.skin.to_xml(parent=material_elem)
-    settings.material.skin.to_xml(parent=skin_elem, tumor=settings.material.tumor.skin)
+    settings.material.skin.to_xml(parent=skin_elem)
 
     adipose_elem = FEB_element.adipose.to_xml(parent=material_elem)
-    settings.material.adipose.to_xml(parent=adipose_elem, tumor=settings.material.tumor.adipose)
+    settings.material.adipose.to_xml(parent=adipose_elem)
 
     glandualar_elem = FEB_element.glandular.to_xml(parent=material_elem)
-    settings.material.glandular.to_xml(parent=glandualar_elem, tumor=settings.material.tumor.glandular)
+    settings.material.glandular.to_xml(parent=glandualar_elem)
+
+    tumor_elem = FEB_element.tumor.to_xml(parent=material_elem)
+    settings.material.tumor.to_xml(parent=tumor_elem)
 
     #################################################################################################################
     # Mesh #
@@ -80,6 +83,7 @@ def write_to_feb(filepath: Path, mesh: MeshParts, settings: Settings):
     # Solid domain
     FEB_element.solid_domain_glandular.to_xml(parent=mesh_domains_elem)
     FEB_element.solid_domain_adipose.to_xml(parent=mesh_domains_elem)
+    FEB_element.solid_domain_tumor.to_xml(parent=mesh_domains_elem)
 
     # Loads
     loads_elem = FEB_element.loads.to_xml(parent=root)

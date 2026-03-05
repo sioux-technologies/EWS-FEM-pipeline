@@ -49,17 +49,19 @@ class FEBElement(BaseModel):
     constants: FEBField = FEBField(tag="Constants")
     material: FEBField = FEBField(tag="Material")
     skin: FEBField = FEBField(tag="material", id="1", name="skin", type="Mooney-Rivlin")
-    adipose: FEBField = FEBField(tag="material", id="2", name="adipose", type="Mooney-Rivlin")
+    adipose: FEBField = FEBField(tag="material", id="2", name="adipose", type="Holzapfel-Gasser-Ogden")
     glandular: FEBField = FEBField(tag="material", id="3", name="glandular", type="Mooney-Rivlin")
+    tumor: FEBField = FEBField(tag="tumor", id="4", name="tumor", type="Mooney-Rivlin")
     mesh: FEBField = FEBField(tag="Mesh")
-    mass_damping: FEBField = FEBField(tag="PartList", val="skin_part,glandular_part,adipose_part", name="Mass_damping")
-    gravitational_acceleration: FEBField = FEBField(tag="PartList", val="skin_part,glandular_part,adipose_part",
+    mass_damping: FEBField = FEBField(tag="PartList", val="skin_part,glandular_part,adipose_part, tumor_part", name="Mass_damping")
+    gravitational_acceleration: FEBField = FEBField(tag="PartList", val="skin_part,glandular_part,adipose_part, tumor_part",
                                                     name="gravitational_acceleration")
     mesh_domains: FEBField = FEBField(tag="MeshDomains")
     shell_domain: FEBField = FEBField(tag="ShellDomain", name="skin_part", mat="skin")
     shell_thickness: FEBField = FEBField(tag="shell_thickness", val="0.0001")
     solid_domain_glandular: FEBField = FEBField(tag="SolidDomain", name="glandular_part", mat="glandular")
     solid_domain_adipose: FEBField = FEBField(tag="SolidDomain", name="adipose_part", mat="adipose")
+    solid_domain_tumor: FEBField = FEBField(tag="SolidDomain", name="tumor_part", mat="tumor")
     loads: FEBField = FEBField(tag="Loads")
     body_load1: FEBField = FEBField(tag="body_load", elem_set="@part_list:gravitational_acceleration",
                                     type="body force")
@@ -127,94 +129,64 @@ class Constants(ExtendedBaseModel):
     faraday_constant: FEBField = FEBField(tag="Fc", val="96485.3")
 
 
-class TumorProperties(BaseModel):
-    """
-    ======================
-    INPUT PARAMETERS TUMOR
-    ======================
-    For the tumor, we assume the Mooney-Rivlin material type, which takes two arguments: coef1, the coefficient of the
-    first invariant term; coef2 coefficient of second invariant term.
-
-    - tumorous: bool                    If TRUE, places a spherical tumor with the below listed parameters. If FALSE, no
-                                        tumor is placed and the code ignores these parameters.
-    - density: float [kg/m^3 > 0]       Sets the mass density of the tumor.
-    - radius: float [m > 0]             Sets the absolute radius [m] of the spherical tumor. NOTE: Does not scale with
-                                        "radius" from GeometrySettings in model_settings.py.
-    - position: list[float] [m > 0]     Sets the absolute position (x [m], y [m], z[m]) of the tumor in space. NOTE:
-                                        Does not scale with "radius" from GeometrySettings in model_settings.py. Make
-                                        sure the tumor is in fact INSIDE the breast.
-    - coef1_adipose: float [Pa > 0]    Sets the tumor coef1 when inside the adipose part.
-    - coef2_adipose: float [Pa > 0]    Sets the tumor coef2 when inside the adipose part.
-    - coef1_glandular: float [Pa > 0]  Sets the tumor coef1 when inside the glandular part.
-    - coef2_glandular: float [Pa > 0]  Sets the tumor coef2 when inside the glandular part.
-    """
-
-    tumorous: bool = True
-    density: float = 1079
-    radius: float = 0.005
-    position: list[float] = [0.035, 0.040, 0]  # (x,y,z)
-    coef1_adipose: float = 971
-    coef2_adipose: float = 939
-    coef1_glandular: float = 920
-    coef2_glandular: float = 870
-
-    @property
-    def adipose(self):
-        return {
-            "tumorous": self.tumorous,
-            "density": self.density,
-            "radius": self.radius,
-            "position": self.position,
-            "coef1": self.coef1_adipose,
-            "coef2": self.coef2_adipose
-        }
-
-    @property
-    def glandular(self):
-        return {
-            "tumorous": self.tumorous,
-            "density": self.density,
-            "radius": self.radius,
-            "position": self.position,
-            "coef1": self.coef1_glandular,
-            "coef2": self.coef2_glandular
-        }
-
-    @property
-    def skin(self):
-        return {"tumorous": False}
-
-
-class MaterialProperties(ExtendedBaseModel):
+class MRProperties(ExtendedBaseModel):
     density: Annotated[float | str, FEBField("density")]
     bulk_modulus: Annotated[float | str, FEBField("k")]
     pressure_model: Annotated[float | str, FEBField("pressure_model")]
     coef1: Annotated[float, FEBField("c1")]
     coef2: Annotated[float, FEBField("c2")]
 
-    def to_xml(self, parent, tumor: None | dict = None):
+    def to_xml(self, parent):
         info = self.model_fields["bulk_modulus"].metadata[0]
         ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.bulk_modulus}"
         info = self.model_fields["pressure_model"].metadata[0]
         ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.pressure_model}"
-        if tumor['tumorous']:
-            density_str = f"{self.density}+H({tumor['radius']}^2-(X-{tumor['position'][0]})^2-(Y-{tumor['position'][1]})^2-(Z-{tumor['position'][2]})^2)*{tumor['density'] - self.density}"
-            info = self.model_fields['density'].metadata[0]
-            ET.SubElement(parent, info.tag, type="math", **info.xml_dict).text = density_str
-            coef1_str = f"{self.coef1}+H({tumor['radius']}^2-(X-{tumor['position'][0]})^2-(Y-{tumor['position'][1]})^2-(Z-{tumor['position'][2]})^2)*{tumor['coef1']}"
-            info = self.model_fields['coef1'].metadata[0]
-            ET.SubElement(parent, info.tag, type="math", **info.xml_dict).text = coef1_str
-            coef2_str = f"{self.coef2}+H({tumor['radius']}^2-(X-{tumor['position'][0]})^2-(Y-{tumor['position'][1]})^2-(Z-{tumor['position'][2]})^2)*{tumor['coef2']} "
-            info = self.model_fields['coef2'].metadata[0]
-            ET.SubElement(parent, info.tag, type="math", **info.xml_dict).text = coef2_str
-        else:
-            info = self.model_fields['density'].metadata[0]
-            ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.density}"
-            info = self.model_fields['coef1'].metadata[0]
-            ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.coef1}"
-            info = self.model_fields['coef2'].metadata[0]
-            ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.coef2}"
+        info = self.model_fields['density'].metadata[0]
+        ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.density}"
+        info = self.model_fields['coef1'].metadata[0]
+        ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.coef1}"
+        info = self.model_fields['coef2'].metadata[0]
+        ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.coef2}"
 
+class HGOProperties(ExtendedBaseModel):
+    density: Annotated[float | str, FEBField("density")]
+    bulk_modulus: Annotated[float | str, FEBField("k")]
+    pressure_model: Annotated[float | str, FEBField("pressure_model")]
+    k1: Annotated[float, FEBField("k1")]
+    k2: Annotated[float, FEBField("k2")]
+    gamma: Annotated[float, FEBField("gamma")]
+    kappa: Annotated[float, FEBField("kappa")]
+    c: Annotated[float, FEBField("c")]
+    fiber_dir_a: Annotated[str, FEBField("a")]
+    fiber_dir_d: Annotated[str, FEBField("d")]
+
+    def to_xml(self, parent):
+        info = self.model_fields["bulk_modulus"].metadata[0]
+        ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.bulk_modulus}"
+        info = self.model_fields["pressure_model"].metadata[0]
+        ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.pressure_model}"
+        info = self.model_fields['density'].metadata[0]
+        ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.density}"
+        info = self.model_fields['k1'].metadata[0]
+        ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.k1}"
+        info = self.model_fields['k2'].metadata[0]
+        ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.k2}"
+        info = self.model_fields['gamma'].metadata[0]
+        ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.gamma}"
+        info = self.model_fields['kappa'].metadata[0]
+        ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.kappa}"
+        info = self.model_fields['c'].metadata[0]
+        ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.c}"
+        mataxis = ET.SubElement(parent, "mat_axis", type="vector")
+        info= self.model_fields['fiber_dir_a'].metadata[0]
+        ET.SubElement(mataxis, info.tag, **info.xml_dict).text = f"{self.fiber_dir_a}"
+        info = self.model_fields['fiber_dir_d'].metadata[0]
+        ET.SubElement(mataxis, info.tag, **info.xml_dict).text = f"{self.fiber_dir_d}"
+        #TODO add support for non-string input?
+
+class MRTumorProperties(MRProperties):
+    position: Annotated[list[float], FEBField("position")]
+    radius: Annotated[float, FEBField("radius")]
 
 class MaterialSettings(ExtendedBaseModel):
     """
@@ -235,28 +207,41 @@ class MaterialSettings(ExtendedBaseModel):
     The mesh, geom and tumor variables have their respective inputs. See class MeshSettings (model_settings.py), class
     GeometrySettings (model_settings.py)
     """
-    skin: MaterialProperties = MaterialProperties(
+    skin: MRProperties = MRProperties(
         density=1100,
         bulk_modulus=480000,
         pressure_model="default",
         coef1=1200,
         coef2=1200,
     )
-    adipose: MaterialProperties = MaterialProperties(
+    adipose: HGOProperties = HGOProperties(
         density=911,
         bulk_modulus=425000,
         pressure_model="default",
-        coef1=109,
-        coef2=106,
+        k1=2.5,
+        k2=14.5,
+        gamma=45,
+        kappa=1 / 6,
+        c=100,
+        fiber_dir_a="0,1,0",
+        fiber_dir_d="1,0,0",
     )
-    glandular: MaterialProperties = MaterialProperties(
+    glandular: MRProperties = MRProperties(
         density=1041,
         bulk_modulus=425000,
         pressure_model="default",
         coef1=230,
         coef2=195,
     )
-    tumor: TumorProperties = TumorProperties()
+    tumor: MRTumorProperties = MRTumorProperties(
+        density=1041,
+        bulk_modulus=425000,
+        pressure_model="default",
+        coef1=230,
+        coef2=195,
+        position=[ 0.035, 0.04, 0,],
+        radius=0.005,
+    )
 
 
 class ControlSettings(ExtendedBaseModel):
@@ -311,7 +296,7 @@ def write_elements_to_xml(parent, mesh):
     """
     tissues = mesh.tissue_parts
     # This order must remain fixed
-    for name in ["skin", "glandular", "adipose", "chest"]:
+    for name in ["skin", "glandular", "adipose", "tumor", "chest"]:
         tissue = getattr(tissues, name)
 
         if name == "chest":

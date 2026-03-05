@@ -99,7 +99,7 @@ class TissueParts(BaseModel):
     chest: MeshObject = MeshObject(name="chest_part", dim=2)
     adipose: MeshObject = MeshObject(name="adipose_part", dim=3)
     glandular: MeshObject = MeshObject(name="glandular_part", dim=3)
-
+    tumor: MeshObject = MeshObject(name="tumor_part", dim=3)
 
 class MeshParts(BaseModel):
     """
