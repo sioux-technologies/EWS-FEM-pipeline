@@ -185,6 +185,7 @@ class HGOProperties(ExtendedBaseModel):
         #TODO add support for non-string input?
 
 class MRTumorProperties(MRProperties):
+    tumorous: Annotated[bool, FEBField("tumorous")]
     position: Annotated[list[float], FEBField("position")]
     radius: Annotated[float, FEBField("radius")]
 
@@ -250,6 +251,7 @@ class MaterialSettings(ExtendedBaseModel):
         coef2=195,
     )
     tumor: MRTumorProperties = MRTumorProperties(
+        tumorous=True,
         density=1041,
         bulk_modulus=425000,
         pressure_model="default",
@@ -323,14 +325,16 @@ def write_elements_to_xml(parent, mesh):
                 ET.SubElement(elem_elem, tissue.type, id=tag).text = nodes_str
 
         else:
-            elem_elem = ET.SubElement(parent, 'Elements', type=tissue.type, name=tissue.name)
-            for i in range(len(tissue.elements)):
-                tag = str(tissue.elements[i])
-                if tissue.type == "tet10":
-                    # Switch tet10 node order when converting from gmsh to FEBio
-                    tissue.nodes[i][8], tissue.nodes[i][9] = tissue.nodes[i][9], tissue.nodes[i][8]
-                nodes_str = ",".join([f"{n}" for n in tissue.nodes[i]])
-                ET.SubElement(elem_elem, "elem", id=tag).text = nodes_str
+            if len(tissue.elements)>0:
+
+                elem_elem = ET.SubElement(parent, 'Elements', type=tissue.type, name=tissue.name)
+                for i in range(len(tissue.elements)):
+                    tag = str(tissue.elements[i])
+                    if tissue.type == "tet10":
+                        # Switch tet10 node order when converting from gmsh to FEBio
+                        tissue.nodes[i][8], tissue.nodes[i][9] = tissue.nodes[i][9], tissue.nodes[i][8]
+                    nodes_str = ",".join([f"{n}" for n in tissue.nodes[i]])
+                    ET.SubElement(elem_elem, "elem", id=tag).text = nodes_str
 
 
 class TimeStepperSettingsStep1(ExtendedBaseModel):
