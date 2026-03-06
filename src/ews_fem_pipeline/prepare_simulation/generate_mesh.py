@@ -113,8 +113,8 @@ def generate_mesh(settings: Settings) -> MeshParts:
     tissues.glandular.tags = [all_final_volumes[1][1]]
 
     # Surface tags for skin and chest
-    tissues.skin.tags = [3]
-    tissues.chest.tags = [9]
+    tissues.skin.tags = [build.getSurfaceLoops(1)[1][0][0]]
+    tissues.chest.tags = [build.getSurfaceLoops(1)[1][0][2]]
 
     # Remove lingering elements
     build.remove(build.getEntities(dim2))
