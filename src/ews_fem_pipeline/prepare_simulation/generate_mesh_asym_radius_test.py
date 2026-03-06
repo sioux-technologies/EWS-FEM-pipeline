@@ -92,9 +92,9 @@ build.fuse([(3, 2)], [(3, 3)], tag=4)
 # Separate glandular from adipose tissue
 build.cut([(3, 1)], [(3, 4)], removeTool=False)
 
-build.addSphere(settings.material.tumor.position[0], settings.material.tumor.position[1],
-                settings.material.tumor.position[2], settings.material.tumor.radius, tag=5)
-build.cut([(3, 1), (3, 4)], [(3, 5)], removeTool=False)
+# build.addSphere(settings.material.tumor.position[0], settings.material.tumor.position[1],
+#                 settings.material.tumor.position[2], settings.material.tumor.radius, tag=5)
+# build.cut([(3, 1), (3, 4)], [(3, 5)], removeTool=False)
 
 all_surfaces = build.getEntities(dim2)
 all_volumes = build.getEntities(dim3)
@@ -110,8 +110,8 @@ all_final_volumes = build.getEntities(dim3)
 
 tissues.adipose.tags = [all_final_volumes[0][1]]
 tissues.glandular.tags = [all_final_volumes[1][1]]
-tissues.tumor.tags = [all_final_volumes[2][1]]
-
+# tissues.tumor.tags = [all_final_volumes[2][1]]
+tissues.tumor.tags = []
 # Surface tags for skin and chest
 tissues.skin.tags = [build.getSurfaceLoops(1)[1][0][0]]
 tissues.chest.tags = [build.getSurfaceLoops(1)[1][0][2]]
