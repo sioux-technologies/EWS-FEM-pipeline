@@ -164,6 +164,7 @@ for name in TissueParts.model_fields:
         num_nodes = int(mesh.getElementProperties(element_type)[3])
         getattr(tissues, name).elements = elements
         getattr(tissues, name).nodes = nodes.reshape(-1, num_nodes)
+        print(mesh.getElementQualities(elements, qualityName='minDetJac'))
     else:
         element_type, elements, nodes = mesh.getElements(getattr(tissues, name).dim, getattr(tissues, name).tags)
         num_nodes = mesh.getElementProperties(element_type[0])[3]

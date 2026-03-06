@@ -117,15 +117,16 @@ def generate_mesh(settings: Settings) -> MeshParts:
 
 
     # Volume tags
+    glandular = all_final_volumes[1][1]
     tissues.adipose.tags = [all_final_volumes[0][1]]
-    tissues.glandular.tags = [all_final_volumes[1][1]]
+    tissues.glandular.tags = [glandular]
     if settings.material.tumor.tumorous:
         tissues.tumor.tags = [all_final_volumes[2][1]]
     else:
         tissues.tumor.tags = []
 
     # Surface tags for skin and chest
-    tissues.skin.tags = [build.getSurfaceLoops(1)[1][0][0]]
+    tissues.skin.tags = [build.getSurfaceLoops(1)[1][0][0], build.getSurfaceLoops(glandular)[1][0][-1], build.getSurfaceLoops(glandular)[1][0][-2]]
     tissues.chest.tags = [build.getSurfaceLoops(1)[1][0][2]]
 
     # Remove lingering elements
