@@ -53,8 +53,8 @@ class FEBElement(BaseModel):
     glandular: FEBField = FEBField(tag="material", id="3", name="glandular", type="Mooney-Rivlin")
     tumor: FEBField = FEBField(tag="tumor", id="4", name="tumor", type="Mooney-Rivlin")
     mesh: FEBField = FEBField(tag="Mesh")
-    mass_damping: FEBField = FEBField(tag="PartList", val="skin_part,glandular_part,adipose_part, tumor_part", name="Mass_damping")
-    gravitational_acceleration: FEBField = FEBField(tag="PartList", val="skin_part,glandular_part,adipose_part, tumor_part",
+    mass_damping: FEBField = FEBField(tag="PartList", val="skin_part,glandular_part,adipose_part", name="Mass_damping")
+    gravitational_acceleration: FEBField = FEBField(tag="PartList", val="skin_part,glandular_part,adipose_part",
                                                     name="gravitational_acceleration")
     mesh_domains: FEBField = FEBField(tag="MeshDomains")
     shell_domain: FEBField = FEBField(tag="ShellDomain", name="skin_part", mat="skin")
@@ -326,9 +326,8 @@ def write_elements_to_xml(parent, mesh):
 
         else:
             if len(tissue.elements)>0:
-
                 elem_elem = ET.SubElement(parent, 'Elements', type=tissue.type, name=tissue.name)
-                for i in range(len(tissue.elements)):
+                for i in np.argsort(tissue.elements):
                     tag = str(tissue.elements[i])
                     if tissue.type == "tet10":
                         # Switch tet10 node order when converting from gmsh to FEBio
