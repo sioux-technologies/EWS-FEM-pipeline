@@ -106,13 +106,18 @@ tissues = mesh_parts.tissue_parts
 
 # Construct and assign surfaces and volumes for different tissues ###
 all_final_volumes = build.getEntities(dim3)
-
-tissues.adipose.tags = [all_final_volumes[0][1]]
-tissues.glandular.tags = [all_final_volumes[1][1]]
+adipose = all_final_volumes[0][1]
+glandular = all_final_volumes[1][1]
+tissues.adipose.tags = [adipose]
+tissues.glandular.tags = [glandular]
 
 # Surface tags for skin and chest
-tissues.skin.tags = [14]
-tissues.chest.tags = [16]
+adipose_surfs = build.getSurfaceLoops(adipose)[1][0]
+glandular_surfs = build.getSurfaceLoops(glandular)[1][0]
+outer_surfaces = np.setdiff1d(adipose_surfs, glandular_surfs)
+nipple_surfaces = list(np.setdiff1d(glandular_surfs, adipose_surfs))
+tissues.skin.tags = [outer_surfaces[0]]+ nipple_surfaces
+tissues.chest.tags = [outer_surfaces[1]]
 
 # Remove lingering elements
 build.remove(build.getEntities(dim2))
