@@ -43,7 +43,7 @@ def generate_mesh(settings: Settings) -> MeshParts:
     n_points = 17  # numbers of fitting steps around the axis
 
     # Initialize array for saving points
-    surface_points = np.empty((n_points, 8), dtype=int)
+    surface_control_points = np.empty((n_points, 8), dtype=int)
 
     angle_nipple = settings.model.geometry.angle_nipple/180 * math.pi
     # Rotate around the y-axis
@@ -54,18 +54,18 @@ def generate_mesh(settings: Settings) -> MeshParts:
         # the points are placed on a circle arc with a radius radius_extra > radius_var
         radius_extra = radius_var / (np.sin(2 * np.arctan(settings.model.geometry.radius_breast / radius_var)))
         for j, phi in enumerate(np.linspace(0, 3 / 4 * np.pi, 8)):
-            surface_points[i - 1, j] = build.addPoint(radius_extra * np.cos(theta) * np.sin(phi),
+            surface_control_points[i - 1, j] = build.addPoint(radius_extra * np.cos(theta) * np.sin(phi),
                                                       radius_extra * np.cos(
                                                           phi) + settings.model.geometry.radius_breast - radius_extra,
                                                       radius_extra * np.sin(theta) * np.sin(phi))
 
     # Close the loop
-    surface_points = np.concatenate((surface_points, surface_points[1, :].reshape(1, -1)), axis=0)
+    surface_control_points = np.concatenate((surface_control_points, surface_control_points[1, :].reshape(1, -1)), axis=0)
     # Define knots and multiplicities for closed surface
     knots = np.linspace(0, 1, 19)
     mults = np.concatenate(([2], np.ones(17), [2]))
     # Build breast surface
-    build.addBSplineSurface(surface_points.flatten(order='F'), len(surface_points), knotsU=knots, multiplicitiesU=mults,
+    build.addBSplineSurface(surface_control_points.flatten(order='F'), len(surface_control_points), knotsU=knots, multiplicitiesU=mults,
                             degreeU=2)
     # Build breast volume
     build.addCurveLoop([3], tag=2)
