@@ -1,5 +1,5 @@
 [model.mesh]
-density = 115.0
+density = 170.0
 
 [material.tumor]
 tumorous = false
