@@ -30,18 +30,6 @@ class GeometrySettings(BaseModel):
     scaling_factor_glandular: float = 0.8
     angle_nipple: float = 30
 
-    @property
-    def left_position_ellipse(self):
-        return self.left_relative_position_ellipse * self.radius
-
-    @property
-    def position_nipple(self):
-        return self.right_relative_position_ellipse * self.radius
-
-    @property
-    def position_center_ellipse(self):
-        return self.center_relative_position_ellipse * self.radius
-
 
 class MeshSettings(BaseModel):
     """
