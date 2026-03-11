@@ -23,12 +23,14 @@ class GeometrySettings(BaseModel):
     """
 
     radius_breast: float = 0.07
-    asym_p1: float = 0.12
-    asym_p2: float = 0.03
     thickness_chest_wall: float = 0.002
     radius_nipple: float = 0.005
     scaling_factor_glandular: float = 0.8
     angle_nipple: float = 30
+    asym_p1: float = 0.12
+    assert asym_p1 >= 0
+    asym_p2: float = 0.03
+    assert asym_p2 >= 0
 
 
 class MeshSettings(BaseModel):
