@@ -160,7 +160,7 @@ class HGOProperties(ExtendedBaseModel):
     fiber_dir_a: Annotated[str, FEBField("a")]
     fiber_dir_d: Annotated[str, FEBField("d")]
 
-    def to_xml(self, parent):
+    def to_xml(self, parent, breast_radius: float):
         info = self.model_fields["bulk_modulus"].metadata[0]
         ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.bulk_modulus}"
         info = self.model_fields["pressure_model"].metadata[0]
@@ -177,12 +177,9 @@ class HGOProperties(ExtendedBaseModel):
         ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.kappa}"
         info = self.model_fields['c'].metadata[0]
         ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.c}"
-        mataxis = ET.SubElement(parent, "mat_axis", type="vector")
-        info= self.model_fields['fiber_dir_a'].metadata[0]
-        ET.SubElement(mataxis, info.tag, **info.xml_dict).text = f"{self.fiber_dir_a}"
-        info = self.model_fields['fiber_dir_d'].metadata[0]
-        ET.SubElement(mataxis, info.tag, **info.xml_dict).text = f"{self.fiber_dir_d}"
-        #TODO add support for non-string input?
+        mat_axis = ET.SubElement(parent, "mat_axis", type='spherical')
+        ET.SubElement(mat_axis, "center").text = f"0,{breast_radius},0"
+        ET.SubElement(mat_axis, "vector").text = "1,0,0"
 
 class MRTumorProperties(MRProperties):
     tumorous: Annotated[bool, FEBField("tumorous")]
@@ -334,6 +331,25 @@ def write_elements_to_xml(parent, mesh):
                         tissue.nodes[i][8], tissue.nodes[i][9] = tissue.nodes[i][9], tissue.nodes[i][8]
                     nodes_str = ",".join([f"{n}" for n in tissue.nodes[i]])
                     ET.SubElement(elem_elem, "elem", id=tag).text = nodes_str
+
+# def write_fiber_map_to_xml(parent, mesh):
+#     for name in ["adipose"]:
+#         tissue = getattr(mesh.tissue_parts, name)
+#         meshdata = ET.SubElement(parent, 'MeshData')
+#         elem_map_a = ET.SubElement(meshdata, 'ElementData', name=f"{name}_map_a", elem_set = tissue)
+#         elem_map_d = ET.SubElement(meshdata, 'ElementData', name=f"{name}_map_d", elem_set = tissue)
+#         for i in np.argsort(tissue.elements):
+#             elem_tag = str(tissue.elements[i])
+#             node_tag = tissue.nodes[i][0]
+#             coord_elem = mesh.nodes.coords[node_tag]
+#             fiber_direction_a = coord_elem*-1+[0,0.07,0]
+#             fiber_direction_a_norm = fiber_direction_a/np.linalg.norm(fiber_direction_a)
+#             fiber_direction_d = coord_elem*[1,-1,-1]+[0,0.07,0]
+#             fiber_direction_d_norm = fiber_direction_d/np.linalg.norm(fiber_direction_d)
+#             dir_a_str = ",".join([f"{n}" for n in fiber_direction_a_norm])
+#             dir_d_str = ",".join([f"{n}" for n in fiber_direction_d_norm])
+#             ET.SubElement(elem_map_a, "elem", lid=elem_tag).text = dir_a_str
+#             ET.SubElement(elem_map_d, "elem", lid=elem_tag).text = dir_d_str  #TODO: add variable breast_radius
 
 
 class TimeStepperSettingsStep1(ExtendedBaseModel):
