@@ -47,7 +47,7 @@ def write_to_feb(filepath: Path, mesh: MeshParts, settings: Settings):
     settings.material.skin.to_xml(parent=skin_elem)
 
     adipose_elem = FEB_element.adipose.to_xml(parent=material_elem)
-    settings.material.adipose.to_xml(parent=adipose_elem)
+    settings.material.adipose.to_xml(parent=adipose_elem, breast_radius= settings.model.geometry.radius_breast)
 
     glandualar_elem = FEB_element.glandular.to_xml(parent=material_elem)
     settings.material.glandular.to_xml(parent=glandualar_elem)
@@ -65,6 +65,9 @@ def write_to_feb(filepath: Path, mesh: MeshParts, settings: Settings):
 
     # Elements
     write_elements_to_xml(parent=mesh_elem, mesh=mesh)
+
+    # # Fiber direction map
+    # write_fiber_map_to_xml(parent=mesh_elem, mesh=mesh)
 
     # Mass damping and gravity
     if settings.material.tumor.tumorous:
