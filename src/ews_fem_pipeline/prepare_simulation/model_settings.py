@@ -11,7 +11,7 @@ class GeometrySettings(BaseModel):
                                                         ALL PARAMETERS (EXCEPT FOR thickness_disk) ARE SCALED w.r.t.
                                                         THE RADIUS!
     - asym_p1: float [>0]                               Shape of the breast base is defined by variable radius
-    - asym_p2: float [>0]                               r = radius_breast(1+p1*cos(theta)+p2*cos(3*theta))
+    - asym_p3: float [>0]                               r = radius_breast(1+p1*cos(theta)+p2*cos(3*theta))
     - radius_nipple: [m > 0.0035]                       Set the radius of the nipple and duct , modeled as a cylinder
                                                         extending from the main glandular tissue of the breast.
     - thickness_chest_wall: float [m > 0]               Sets the thickness of the disk attached to the chest wall. The disk
@@ -29,8 +29,8 @@ class GeometrySettings(BaseModel):
     angle_nipple: float = 30
     asym_p1: float = 0.12
     assert asym_p1 >= 0
-    asym_p2: float = 0.03
-    assert asym_p2 >= 0
+    asym_p3: float = 0.03
+    assert asym_p3 >= 0
 
 
 class MeshSettings(BaseModel):

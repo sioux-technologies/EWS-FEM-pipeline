@@ -49,7 +49,7 @@ def generate_mesh(settings: Settings) -> MeshParts:
     # Rotate around the y-axis
     for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points), start=1):
         radius_var = settings.model.geometry.radius_breast * (1 + settings.model.geometry.asym_p1 * (np.cos(theta) + 1)
-                                                              + settings.model.geometry.asym_p2 * (
+                                                              + settings.model.geometry.asym_p3 * (
                                                                           np.cos(3 * theta) + 1))
         # the points are placed on a circle arc with a radius radius_extra > radius_var
         radius_extra = radius_var / (np.sin(2 * np.arctan(settings.model.geometry.radius_breast / radius_var)))
