@@ -7,10 +7,10 @@ import pyvista as pv
 from tqdm import tqdm
 
 #  Assign the path to the single .feb file you wish to load in.
-filepath = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\all_static_settings_HGO_no_tumor.feb")
+
 
 logger = logging.getLogger(__name__)
-def feb_to_pointcloud(filepath: Path):
+def feb_to_pointcloud(filepath: Path, obj=False):
     assert filepath.suffix == ".feb", "The input file does not have the correct file extension. Must be .feb"
 
     # Get name of input file
@@ -42,5 +42,10 @@ def feb_to_pointcloud(filepath: Path):
     front = np.setdiff1d(surf_ids, chest_ids[0])
     skin = pv.PolyData(vtk_mesh_disp.points[front])
     skin.save(filepath_name.with_suffix(f".ply"))
+    if obj:
+        #also save as .obj file
+        skin.save(filepath_name.with_suffix(f".obj"))
 
-
+if __name__ == "__main__":
+    filepath = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\all_static_settings_HGO_no_tumor.feb")
+    feb_to_pointcloud(filepath)
