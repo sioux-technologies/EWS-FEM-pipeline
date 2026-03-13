@@ -188,7 +188,7 @@ mesh_parts.nodes.coords = node_coords[sorted_ids]
 build.synchronize()
 mesh.generate()
 
-gmsh.write(r'C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\output\test.msh')
+gmsh.write(r'/output/test.msh')
 gmsh.finalize()
 
 
