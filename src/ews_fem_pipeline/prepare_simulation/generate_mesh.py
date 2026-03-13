@@ -5,7 +5,6 @@ import gmsh
 import numpy as np
 from gmsh import model
 
-from ews_fem_pipeline.prepare_simulation import MeshParts, Settings
 from ews_fem_pipeline.prepare_simulation.model_settings import MeshParts, TissueParts
 from ews_fem_pipeline.prepare_simulation.simulation_settings import Settings
 
