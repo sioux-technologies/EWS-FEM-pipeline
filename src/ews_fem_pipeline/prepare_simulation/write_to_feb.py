@@ -49,8 +49,8 @@ def write_to_feb(filepath: Path, mesh: MeshParts, settings: Settings):
     adipose_elem = FEB_element.adipose.to_xml(parent=material_elem)
     settings.material.adipose.to_xml(parent=adipose_elem, breast_radius= settings.model.geometry.radius_breast)
 
-    glandualar_elem = FEB_element.glandular.to_xml(parent=material_elem)
-    settings.material.glandular.to_xml(parent=glandualar_elem)
+    glandular_elem = FEB_element.glandular.to_xml(parent=material_elem)
+    settings.material.glandular.to_xml(parent=glandular_elem)
     if settings.material.tumor.tumorous:
         tumor_elem = FEB_element.tumor.to_xml(parent=material_elem)
         settings.material.tumor.to_xml(parent=tumor_elem)
