@@ -3,7 +3,9 @@ import math
 
 import gmsh
 import numpy as np
+from gmsh import model
 
+from ews_fem_pipeline.prepare_simulation import MeshParts, Settings
 from ews_fem_pipeline.prepare_simulation.model_settings import MeshParts, TissueParts
 from ews_fem_pipeline.prepare_simulation.simulation_settings import Settings
 
@@ -26,9 +28,15 @@ def generate_mesh(settings: Settings) -> MeshParts:
     gmsh.option.setNumber("General.Verbosity", 0)
 
     # Rename objects to alias
-    build = gmsh.model.occ
-    mesh = gmsh.model.mesh
+    build_geometry(gmsh.model.occ, mesh_parts, settings)
+    build_mesh(gmsh.model.mesh, mesh_parts.tissue_parts, settings)
+    prep_for_output(mesh_parts)
 
+    gmsh.finalize()
+
+    return mesh_parts
+
+def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     #############################
     # Construct breast surface  #
     #############################
@@ -39,27 +47,29 @@ def generate_mesh(settings: Settings) -> MeshParts:
     # Initialize array for saving points
     surface_control_points = np.empty((n_points, 8), dtype=int)
 
-    angle_nipple = settings.model.geometry.angle_nipple/180 * math.pi
+    angle_nipple = settings.model.geometry.angle_nipple / 180 * math.pi
     # Rotate around the y-axis
     for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points), start=1):
         radius_var = settings.model.geometry.radius_breast * (1 + settings.model.geometry.asym_p1 * (np.cos(theta) + 1)
                                                               + settings.model.geometry.asym_p3 * (
-                                                                          np.cos(3 * theta) + 1))
+                                                                      np.cos(3 * theta) + 1))
         # the points are placed on a circle arc with a radius radius_extra > radius_var
         radius_extra = radius_var / (np.sin(2 * np.arctan(settings.model.geometry.radius_breast / radius_var)))
         for j, phi in enumerate(np.linspace(0, 3 / 4 * np.pi, 8)):
             surface_control_points[i - 1, j] = build.addPoint(radius_extra * np.cos(theta) * np.sin(phi),
-                                                      radius_extra * np.cos(
-                                                          phi) + settings.model.geometry.radius_breast - radius_extra,
-                                                      radius_extra * np.sin(theta) * np.sin(phi))
+                                                              radius_extra * np.cos(
+                                                                  phi) + settings.model.geometry.radius_breast - radius_extra,
+                                                              radius_extra * np.sin(theta) * np.sin(phi))
 
     # Close the loop
-    surface_control_points = np.concatenate((surface_control_points, surface_control_points[1, :].reshape(1, -1)), axis=0)
+    surface_control_points = np.concatenate((surface_control_points, surface_control_points[1, :].reshape(1, -1)),
+                                            axis=0)
     # Define knots and multiplicities for closed surface
     knots = np.linspace(0, 1, 19)
     mults = np.concatenate(([2], np.ones(17), [2]))
     # Build breast surface
-    build.addBSplineSurface(surface_control_points.flatten(order='F'), len(surface_control_points), knotsU=knots, multiplicitiesU=mults,
+    build.addBSplineSurface(surface_control_points.flatten(order='F'), len(surface_control_points), knotsU=knots,
+                            multiplicitiesU=mults,
                             degreeU=2)
     # Build breast volume
     build.addCurveLoop([3], tag=2)
@@ -123,14 +133,15 @@ def generate_mesh(settings: Settings) -> MeshParts:
     # Synchronize the geometry before assigning meshing
     build.synchronize()
 
+def build_mesh(mesh, tissues: TissueParts, settings: Settings):
     ####################
     # Generate 3D mesh #
     ####################
 
     # Assign global mesh density by scaling mesh with length of mesh curves
-    curve_list = build.getEntities(dim=1)
+    curve_list = gmsh.model.occ.getEntities(dim=1)
     for curve in curve_list:
-        length_curve = build.getMass(dim=1, tag=curve[1])
+        length_curve = gmsh.model.occ.getMass(dim=1, tag=curve[1])
         mesh.setTransfiniteCurve(curve[1], int(settings.model.mesh.density * length_curve))
 
     # Generate mesh up to 3D, set to predefined mesh order, and optionally optimize
@@ -169,7 +180,7 @@ def generate_mesh(settings: Settings) -> MeshParts:
             getattr(tissues, name).elements = elements[0]
             getattr(tissues, name).nodes = nodes[0].reshape(-1, num_nodes)
 
-
+def prep_for_output(mesh_parts: MeshParts):
     #########################################
     # Extract all nodes and prep for output #
     #########################################
@@ -182,8 +193,4 @@ def generate_mesh(settings: Settings) -> MeshParts:
     sorted_ids = node_tags.argsort()
     mesh_parts.nodes.tags = node_tags[sorted_ids]
     mesh_parts.nodes.coords = node_coords[sorted_ids]
-
-    gmsh.finalize()
-
-    return mesh_parts
 
