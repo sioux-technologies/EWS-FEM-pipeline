@@ -25,12 +25,6 @@ def generate_mesh(settings: Settings) -> MeshParts:
     # Set option to suppress all output of the mesher to the console.
     gmsh.option.setNumber("General.Verbosity", 0)
 
-    # Dimension of object
-    dim0 = 0
-    dim1 = 1
-    dim2 = 2
-    dim3 = 3
-
     # Rename objects to alias
     build = gmsh.model.occ
     mesh = gmsh.model.mesh
@@ -74,7 +68,7 @@ def generate_mesh(settings: Settings) -> MeshParts:
     build.addVolume([1], tag=1)
 
     # remove control points
-    build.remove(build.getEntities(dim0))
+    build.remove(build.getEntities(dim=0))
 
     # Build shape of torso
     build.addCylinder(0, -(1 / 2 * settings.model.geometry.radius_breast / np.sin(1 / 2 * angle_nipple)), -0.1,
@@ -97,8 +91,8 @@ def generate_mesh(settings: Settings) -> MeshParts:
     # Separate glandular from adipose tissue
     build.cut([(3, 1)], [(3, 4)], removeTool=False)
 
-    all_surfaces = build.getEntities(dim2)
-    all_volumes = build.getEntities(dim3)
+    all_surfaces = build.getEntities(dim=2)
+    all_volumes = build.getEntities(dim=3)
 
     # Fragment full model. Ensures no surfaces and volumes overlap. Note: replaces all tags!
     build.fragment(all_volumes, all_surfaces)
@@ -107,7 +101,7 @@ def generate_mesh(settings: Settings) -> MeshParts:
     tissues = mesh_parts.tissue_parts
 
     # Construct and assign surfaces and volumes for different tissues ###
-    all_final_volumes = build.getEntities(dim3)
+    all_final_volumes = build.getEntities(dim=3)
     adipose = all_final_volumes[0][1]
     glandular = all_final_volumes[1][1]
     tissues.adipose.tags = [adipose]
@@ -122,9 +116,9 @@ def generate_mesh(settings: Settings) -> MeshParts:
     tissues.chest.tags = [outer_surfaces[1]]
 
     # Remove lingering elements
-    build.remove(build.getEntities(dim2))
-    build.remove(build.getEntities(dim1))
-    build.remove(build.getEntities(dim0))
+    build.remove(build.getEntities(dim=2))
+    build.remove(build.getEntities(dim=1))
+    build.remove(build.getEntities(dim=0))
 
     # Synchronize the geometry before assigning meshing
     build.synchronize()
@@ -134,13 +128,13 @@ def generate_mesh(settings: Settings) -> MeshParts:
     ####################
 
     # Assign global mesh density by scaling mesh with length of mesh curves
-    curve_list = build.getEntities(dim1)
+    curve_list = build.getEntities(dim=1)
     for curve in curve_list:
-        length_curve = build.getMass(dim1, curve[1])
+        length_curve = build.getMass(dim=1, tag=curve[1])
         mesh.setTransfiniteCurve(curve[1], int(settings.model.mesh.density * length_curve))
 
     # Generate mesh up to 3D, set to predefined mesh order, and optionally optimize
-    mesh.generate(dim3)
+    mesh.generate(dim=3)
     mesh.setOrder(settings.model.mesh.order)
     if settings.model.mesh.optimize:
         if settings.model.mesh.order == 1:
