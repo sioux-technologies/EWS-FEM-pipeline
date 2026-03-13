@@ -1,20 +1,47 @@
 from pathlib import Path
-import logging
 
 import numpy as np
 import pyvista as pv
-from tqdm import tqdm
-from functools import partial
-import feb_to_pointcloud
+from load_data import load_obj_file, point_clicker
 
-filepath = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\output\test_settings.obj")
+# filepath = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\output\all_static_settings_HGO_no_tumor.obj")
+filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3031.01.lr.frame_001.obj")
+skin = load_obj_file(filepath)
+nipple_coord = point_clicker(skin)
+
+#translate such that the nipple is at the origin
+skin_pd = pv.PolyData(skin.points)
+skin_pd.translate(-1*nipple_coord[0], inplace=True)
+skin.points = skin_pd.points
+
+more_points = np.array(point_clicker(skin))
+more_points[:,1] = 0
+breast_circumf = pv.Spline(more_points, closed=True)
+breast_area = breast_circumf.delaunay_2d()
+breast_area.translate((0, 0.5, 0), inplace=True)
+breast_volume = breast_area.extrude((0,-1,0), capping=True)
+skin_segmented = skin.select_interior_points(breast_volume)
+
+
+
+
+
 dist_grid = 0.01
-
-skin = pv.read(filepath)
-bounds = np.array(skin.bounds)
-n_points = np.floor(np.abs(bounds/dist_grid)).reshape(-1,2)[[0,2], :]
+bounds = np.array(skin_segmented.bounds)
+m = 15
+n = 20
 lines = []
-n_total = np.sum(n_points)
-points_x = np.range()
-line1 = pv.Line((0,-1,0), (0,1,0))
+inters = []
+for theta in np.linspace(0,2*np.pi, m, endpoint=False):
+    for ring in range(n):
+        x = ring*dist_grid*np.sin(theta)
+        z = ring*dist_grid*np.cos(theta)
+        projection_point = skin_segmented.ray_trace([x, 1, z], [x, -1, z], first_point=True)[0]
+        if len(projection_point)>0:
+            inters.append(projection_point)
+        else:
+            inters.append([np.nan, np.nan, np.nan])
 
+#
+points_pd = pv.PolyData(inters)
+pv.plot(points_pd)
