@@ -1,36 +1,46 @@
 from pathlib import Path
-import logging
-
-import numpy as np
 import pyvista as pv
-from tqdm import tqdm
 from functools import partial
+import numpy as np
 
 #  Assign the path to the folder of data you wish to load in.
-filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3032.01.lr.frame_001.obj")
-skin = pv.read(filepath)
-skin.points[:, [0,1]] = skin.points[:,[1,0]] #swap x- and y-axis to match model output
 
-picked_points = []
-nipple_coord_temp = None
-def point_selecter(_point):
-    global nipple_coord_temp
-    nipple_coord_temp = _point
-    print('Point picked: ', str(_point), '. Press enter to confirm.')
+def load_obj_file(filepath: Path, switch_axes = True) -> pv.UnstructuredGrid:
+    skin = pv.read(filepath)
+    if switch_axes:
+        skin.points[:, [0,1]] = skin.points[:,[1,0]] #swap x- and y-axis to match model output
+    return skin
 
-def point_saver(picked_points):
-    global nipple_coord_temp
-    picked_points.append(nipple_coord_temp)
-    print('Point Confirmed. Select another point or press Q to exit.')
+def point_clicker(skin: pv.PolyData | pv.UnstructuredGrid) -> list:
+    clicked_points = []
+    point_temp = None
+    def point_selector(point):
+        nonlocal point_temp
+        point_temp = point
+        print('Point picked: ', str(point), '. Press enter to confirm.')
 
-wrapped_point_saver = partial(point_saver, picked_points=picked_points)
-pl=pv.Plotter()
-pl.add_mesh(skin)
-picked_point = pl.enable_point_picking(callback=point_selecter, picker = 'point',
-                                show_message='Pick a point for nipple, press enter to confirm, press Q when done.',
-                                left_clicking=True)
-pl.add_key_event('Return', wrapped_point_saver)
-pl.view_zx()
-pl.show()
+    def point_saver(picked_points):
+        nonlocal point_temp
+        picked_points.append(point_temp)
+        print('Point', str(point_temp), ' Confirmed. Select another point or press Q to exit.')
+        point_temp = tuple(point_temp)
+        pl.add_points(np.array(point_temp), render_points_as_spheres=True, color = 'red', point_size=10)
+        pl.render()
 
-nipple_point = picked_points[0]
+    wrapped_point_saver = partial(point_saver, picked_points=clicked_points)
+    pl=pv.Plotter()
+    pl.add_mesh(skin)
+    pl.enable_point_picking(callback=point_selector, picker = 'point',
+                                    show_message='Pick a point for nipple, press enter to confirm, press Q when done.',
+                                    left_clicking=True)
+    pl.add_key_event('Return', wrapped_point_saver)
+    pl.view_zx()
+    pl.show()
+
+    return clicked_points
+
+
+if __name__ == "__main__":
+    filepath = Path(
+        r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3032.01.lr.frame_001.obj")
+    point_clicker(filepath)
