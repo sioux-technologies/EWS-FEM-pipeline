@@ -8,9 +8,8 @@ from tqdm import tqdm
 
 #  Assign the path to the single .feb file you wish to load in.
 
-
 logger = logging.getLogger(__name__)
-def feb_to_pointcloud(filepath: Path, obj=False):
+def feb_to_3d(filepath: Path, suffix = '.obj', remove_chest=False):
     assert filepath.suffix == ".feb", "The input file does not have the correct file extension. Must be .feb"
 
     # Get name of input file
@@ -34,18 +33,14 @@ def feb_to_pointcloud(filepath: Path, obj=False):
     vtk_mesh_disp.points = vtk_mesh_disp.points + displacement
 
     # Extract only surface
-    surfs = vtk_mesh.extract_surface(algorithm='dataset_surface', pass_pointid = True)
+    surfs = vtk_mesh_disp.extract_surface(algorithm='dataset_surface', pass_pointid = True)
     surf_ids = surfs['orig_indices']
 
-    # Remove chest wall
-    chest_ids = np.where(displacement[:,0] == 0)
-    front = np.setdiff1d(surf_ids, chest_ids[0])
-    skin = pv.PolyData(vtk_mesh_disp.points[front])
-    skin.save(filepath_name.with_suffix(f".ply"))
-    if obj:
-        #also save as .obj file
-        skin.save(filepath_name.with_suffix(f".obj"))
+    if remove_chest:
+        # Remove chest wall
+        chest_ids = np.where(displacement[:,0] == 0)
+        chest_surf_ids = np.array(range(len(surf_ids)))[np.isin(surf_ids, chest_ids)]
+        surfs, _ = surfs.remove_points(chest_surf_ids)
 
-if __name__ == "__main__":
-    filepath = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\all_static_settings_HGO_no_tumor.feb")
-    feb_to_pointcloud(filepath)
+    surfs.save(filepath_name.with_suffix(suffix))
+
