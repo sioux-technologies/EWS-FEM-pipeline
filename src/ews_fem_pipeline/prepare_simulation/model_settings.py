@@ -7,38 +7,31 @@ class GeometrySettings(BaseModel):
     INPUT PARAMETERS
     ================
 
-    - radius: float [m > 0]                             Set the radius of the breast, which is modelled as a hemisphere.
+    - radius_breast: float [m > 0]                      Set the radius of the breast, which is modelled as a hemisphere.
                                                         ALL PARAMETERS (EXCEPT FOR thickness_disk) ARE SCALED w.r.t.
                                                         THE RADIUS!
+    - asym_p1: float                                    Shape of the breast base is defined by variable radius
+    - asym_p2: float                                    r = radius_breast(1+p1*cos(theta)+p2*cos(2*theta)
+    - asym_p3: float                                                            + p3*cos(3*theta))
+    - radius_nipple: [m > 0.0035]                       Set the radius of the nipple and duct , modeled as a cylinder
+                                                        extending from the main glandular tissue of the breast.
     - thickness_chest_wall: float [m > 0]               Sets the thickness of the disk attached to the chest wall. The disk
                                                         is subjected to the boundary conditions of the parabolic jump.
-    - left_relative_position_ellipse: float [m > 0]     Adds a point left of the chest where the glandular ellipse
-                                                        starts. This point acts as a placeholder for the left side of
-                                                        the ellipse and is removed later.
-    - right_relative_position_ellipse: float [m > 0]    This parameter sets the position of the nipple, scaled with the
-                                                        radius.
-    - center_relative position_ellipse: float [m > 0]   Sets the center point of the ellipse. This parameter shifts the
-                                                        glandular part down/up, which causes sharper/obtuse angles in
-                                                        the nipple.
+    - scaling_factor_glandular: float [0 < f < 1]       Set the ratio of radius of breast : radius of glandular tissue
+                                                        in all three dimensions.
+    - angle_nipple: float [deg < 90]                    Sets the angle of the nipple with respect to the body front. The
+                                                        radius of the chest curvature is scaled accordingly.
     """
 
-    radius: float = 0.07
+    radius_breast: float = 0.07
     thickness_chest_wall: float = 0.002
-    left_relative_position_ellipse: float = 0.4
-    right_relative_position_ellipse: float = 0.05
-    center_relative_position_ellipse: float = 0.3
+    radius_nipple: float = 0.005
+    scaling_factor_glandular: float = 0.8
+    angle_nipple: float = 30
+    asym_p1: float = 0.12
+    asym_p2: float = 0.02
+    asym_p3: float = 0.03
 
-    @property
-    def left_position_ellipse(self):
-        return self.left_relative_position_ellipse * self.radius
-
-    @property
-    def position_nipple(self):
-        return self.right_relative_position_ellipse * self.radius
-
-    @property
-    def position_center_ellipse(self):
-        return self.center_relative_position_ellipse * self.radius
 
 
 class MeshSettings(BaseModel):
