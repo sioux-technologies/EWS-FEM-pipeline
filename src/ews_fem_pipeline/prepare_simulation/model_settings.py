@@ -29,7 +29,7 @@ class GeometrySettings(BaseModel):
     scaling_factor_glandular: float = 0.8
     angle_nipple: float = 30
     asym_p1: float = 0.12
-    asym_p2: float = 0.01
+    asym_p2: float = 0.02
     asym_p3: float = 0.03
 
 
