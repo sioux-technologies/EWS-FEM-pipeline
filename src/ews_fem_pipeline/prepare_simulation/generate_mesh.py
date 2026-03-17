@@ -50,8 +50,8 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     # Rotate around the y-axis
     for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points), start=1):
         radius_var = settings.model.geometry.radius_breast * (1 + settings.model.geometry.asym_p1 * (np.cos(theta) + 1)
-                                                              + settings.model.geometry.asym_p3 * (
-                                                                      np.cos(3 * theta) + 1))
+                                                              + settings.model.geometry.asym_p2 * (np.cos(2*theta) + 1)
+                                                              + settings.model.geometry.asym_p3 * (np.cos(3*theta) + 1))
         # the points are placed on a circle arc with a radius radius_extra > radius_var
         radius_extra = radius_var / (np.sin(2 * np.arctan(settings.model.geometry.radius_breast / radius_var)))
         for j, phi in enumerate(np.linspace(0, 3 / 4 * np.pi, 8)):
