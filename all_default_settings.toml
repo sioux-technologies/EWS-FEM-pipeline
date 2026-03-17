@@ -1,15 +1,18 @@
 [model.mesh]
 ls = 0.005
-density = 195.0
+density = 260
 optimize = true
 order = 2
 
 [model.geometry]
-radius = 0.07
+radius_breast = 0.07
 thickness_chest_wall = 0.002
-left_relative_position_ellipse = 0.4
-right_relative_position_ellipse = 0.05
-center_relative_position_ellipse = 0.3
+radius_nipple = 0.005
+scaling_factor_glandular = 0.8
+angle_nipple = 30
+asym_p1 = 0.12
+asym_p2 = 0.02
+asym_p3 = 0.03
 
 [material.skin]
 density = 1100.0
@@ -34,13 +37,13 @@ coef2 = 195.0
 
 [material.tumor]
 tumorous = true
-density = 1079.0
+density = 1079
 radius = 0.005
-position = [ 0.035, 0.04, 0.0,]
-coef1_adipose = 971.0
-coef2_adipose = 939.0
-coef1_glandular = 920.0
-coef2_glandular = 870.0
+position = [ 0.035, 0.04, 0,]
+coef1_adipose = 971
+coef2_adipose = 939
+coef1_glandular = 920
+coef2_glandular = 870
 
 [simulation.control_step1]
 analysis = "STATIC"
