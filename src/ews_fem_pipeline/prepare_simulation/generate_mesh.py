@@ -80,25 +80,32 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     build.remove(build.getEntities(dim=0))
 
     # Build shape of torso
-    build.addCylinder(0, -(1 / 2 * settings.model.geometry.radius_breast / np.sin(1 / 2 * angle_nipple)), -0.1,
-                      0, 0, 0.2,
+    build.addCylinder(0, -(1 / 2 * settings.model.geometry.radius_breast / np.sin(1 / 2 * angle_nipple)), -0.2,
+                      0, 0, 0.4,
                       (1 / 2 * settings.model.geometry.radius_breast / np.sin(1 / 2 * angle_nipple)), tag=2)
 
-    # Cut torso from breast shape
-    build.cut([(3, 1)], [(3, 2)], removeTool=True)
-
     # Build glandular tissue by copying and downscaling breast volume
-    build.copy([(3, 1)])  # tag = 2
-    build.dilate([(3, 2)], 0, 1 / 2 * settings.model.geometry.radius_breast, 0,
+    build.copy([(3, 1)])  # tag = 3
+    build.dilate([(3, 3)], 0, 1 / 2 * settings.model.geometry.radius_breast, 0,
                  settings.model.geometry.scaling_factor_glandular, settings.model.geometry.scaling_factor_glandular,
                  settings.model.geometry.scaling_factor_glandular)
+
+    # Cut torso from breast shape
+    build.cut([(3, 1)], [(3, 2)], removeTool=False)
+    # Move and cut torso from glandular tissue to ensure a stable layer of adipose tissue on chest
+    build.translate([(3, 2)], 0,
+                    (1 / 2 * (
+                    1 - settings.model.geometry.scaling_factor_glandular)) * settings.model.geometry.radius_breast,
+                    0)
+    build.cut([(3, 3)], [(3, 2)], removeTool=True)
+
     # Add duct and nipple as a cylinder
-    build.addCylinder(0, settings.model.geometry.radius_breast - 0.02, 0, 0, 0.025, 0,
-                      settings.model.geometry.radius_nipple, tag=3)
-    # fuse duct/nipple with glandular tissue
-    build.fuse([(3, 2)], [(3, 3)], tag=4)
+    build.addCylinder(0, settings.model.geometry.radius_breast - 0.02, 0, 0, 0.023, 0,
+                      settings.model.geometry.radius_nipple, tag=4)
+    # Fuse duct/nipple with glandular tissue
+    build.fuse([(3, 3)], [(3, 4)], tag=5)
     # Separate glandular from adipose tissue
-    build.cut([(3, 1)], [(3, 4)], removeTool=False)
+    build.cut([(3, 1)], [(3, 5)], removeTool=False)
 
     all_surfaces = build.getEntities(dim=2)
     all_volumes = build.getEntities(dim=3)
