@@ -1,11 +1,9 @@
 import logging
 import math
 from typing import Any
-
 import gmsh
 import numpy as np
-from numpy import dtype, float64, ndarray
-from numpy._core.multiarray import _ScalarT
+
 
 from ews_fem_pipeline.prepare_simulation.model_settings import MeshParts, TissueParts
 from ews_fem_pipeline.prepare_simulation.simulation_settings import Settings
@@ -41,7 +39,10 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     #############################
     # Construct breast surface  #
     #############################
-    knots, mults, surface_control_points = construct_bspline_points(build, settings)
+    surface_control_points = construct_bspline_points(build, settings, 17, 8)
+    # Define knots and multiplicities for closed surface
+    knots = np.linspace(0, 1, 17+2)
+    mults = np.concatenate(([2], np.ones(17), [2]))
     # Build breast surface
     build.addBSplineSurface(surface_control_points.flatten(order='F'), len(surface_control_points), knotsU=knots,
                             multiplicitiesU=mults,
@@ -122,25 +123,23 @@ def assign_tissues(build, mesh_parts: MeshParts):
     tissues.chest.tags = [outer_surfaces[1]]
 
 
-def construct_bspline_points(build, settings: Settings, n_points = 17) -> tuple[
-    ndarray[tuple[Any, ...], dtype[_ScalarT]], ndarray[tuple[Any, ...], dtype[float64]], ndarray[
-        tuple[Any, ...], dtype[_ScalarT]]]:
+def construct_bspline_points(build, settings: Settings, n_points_u: int, n_points_v: int) -> np.ndarray[Any, np.dtype[np.int_]]:
     # Points for the breast surface are generated on circle arcs with variable radius to create asymmetry
     # 3/4 of a "sphere" are generated, this will be cut down later
 
     # Initialize array for saving points
-    surface_control_points = np.empty((n_points, 8), dtype=int)
+    surface_control_points = np.empty((n_points_u, n_points_v), dtype=int)
 
     # Rotate around the y-axis
-    for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points), start=1):
+    for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points_u), start=1):
         radius_var = settings.model.geometry.radius_breast * (1 + settings.model.geometry.asym_p1 * (np.cos(theta) + 1)
                                                               + settings.model.geometry.asym_p2 * (
-                                                                          np.cos(2 * theta) + 1)
+                                                                      np.cos(2 * theta) + 1)
                                                               + settings.model.geometry.asym_p3 * (
-                                                                          np.cos(3 * theta) + 1))
+                                                                      np.cos(3 * theta) + 1))
         # the points are placed on a circle arc with a radius radius_extra > radius_var
         radius_extra = radius_var / (np.sin(2 * np.arctan(settings.model.geometry.radius_breast / radius_var)))
-        for j, phi in enumerate(np.linspace(0, 3 / 4 * np.pi, 8)):
+        for j, phi in enumerate(np.linspace(start=0, stop=np.pi, num=n_points_v, endpoint=False)):
             surface_control_points[i - 1, j] = build.addPoint(radius_extra * np.cos(theta) * np.sin(phi),
                                                               radius_extra * np.cos(
                                                                   phi) + settings.model.geometry.radius_breast - radius_extra,
@@ -149,10 +148,8 @@ def construct_bspline_points(build, settings: Settings, n_points = 17) -> tuple[
     # Close the loop
     surface_control_points = np.concatenate((surface_control_points, surface_control_points[1, :].reshape(1, -1)),
                                             axis=0)
-    # Define knots and multiplicities for closed surface
-    knots = np.linspace(0, 1, n_points+2)
-    mults = np.concatenate(([2], np.ones(n_points), [2]))
-    return knots, mults, surface_control_points
+
+    return surface_control_points
 
 
 def build_mesh(mesh, tissues: TissueParts, settings: Settings):
