@@ -34,6 +34,7 @@ def feb_to_blender(filepath: Path):  # Input should be path to .vtk files
 
     # Define paths output .obj file for surface mesh and output .npy file for displacements
     filepath_obj = (filepath_output / filename).with_suffix(".obj")
+    filepath_obj_0 = (filepath_output / filename).with_suffix(".0.obj")
     filepath_npy = (filepath_output / filename).with_suffix(".npy")
 
     # Define number of time stamps
@@ -91,6 +92,14 @@ def feb_to_blender(filepath: Path):  # Input should be path to .vtk files
 
         # Now assign sorted indices to surface
         surface_disp_obj[idx_time] = surface_disp[sort_idx]
+        if idx_time == 0:
+            vtk_mesh_0 = vtk_mesh.copy()
+            vtk_mesh_0.points = vtk_mesh.points-displacement
+            pl = pv.Plotter()
+            pl.add_mesh(vtk_mesh_0)
+            pl.export_obj(filename=filepath_obj_0)
+
+
 
     # Save data to binary .npy file
     np.save(str(filepath_npy), surface_disp_obj)
