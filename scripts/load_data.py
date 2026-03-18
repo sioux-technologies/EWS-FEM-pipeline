@@ -11,7 +11,7 @@ def load_obj_file(filepath: Path, switch_axes = True) -> pv.UnstructuredGrid:
         skin.points[:, [0,1]] = skin.points[:,[1,0]] #swap x- and y-axis to match model output
     return skin
 
-def point_clicker(skin: pv.PolyData | pv.UnstructuredGrid) -> list:
+def point_clicker(skin: pv.PolyData | pv.UnstructuredGrid, message : str = "") -> list:
     clicked_points = []
     point_temp = None
     def point_selector(point):
@@ -31,7 +31,7 @@ def point_clicker(skin: pv.PolyData | pv.UnstructuredGrid) -> list:
     pl=pv.Plotter()
     pl.add_mesh(skin)
     pl.enable_point_picking(callback=point_selector, picker = 'point',
-                                    show_message='Pick a point for nipple, press enter to confirm, press Q when done.',
+                                    show_message=message + 'press enter to confirm, press Q when done.',
                                     left_clicking=True)
     pl.add_key_event('Return', wrapped_point_saver)
     pl.view_zx()
