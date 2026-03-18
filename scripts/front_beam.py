@@ -4,8 +4,9 @@ import numpy as np
 import pyvista as pv
 from load_data import load_obj_file, point_clicker
 from ews_fem_pipeline.prepare_simulation import Settings, write_settings_to_toml
-from ews_fem_pipeline.prepare_simulation import generate_mesh
-
+from ews_fem_pipeline.prepare_simulation import generate_mesh, write_to_feb
+from ews_fem_pipeline.cli import generate, fem
+from ews_fem_pipeline.convert_simulation import feb_to_3d
 
 def extract_breast(skin: pv.PolyData):
     more_points = np.array(point_clicker(skin))
@@ -47,11 +48,15 @@ for theta in np.linspace(0,2*np.pi, m, endpoint=False):
         else:
             inters.append([np.nan, np.nan, np.nan])
 points_pd = pv.PolyData(inters)
-pv.plot(points_pd)
+# pv.plot(points_pd)
 
 settings=Settings()
-settings.model.geometry.radius = np.abs((bounds[2]-bounds[3]))
+settings.model.geometry.radius = float(np.abs((bounds[2]-bounds[3])))
 folder = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization")
-filepath_new = Path(folder) / filepath.stem
-filepath_new_toml = filepath_new.with_suffix(f'.toml')
-write_settings_to_toml(filepath = filepath_new_toml, settings = settings)
+filepath_out = Path(folder) / filepath.stem
+filepath_out_toml = filepath_out.with_suffix(f'.toml')
+write_settings_to_toml(filepath = filepath_out_toml, settings = settings)
+
+mesh_files = generate.callback([filepath_out_toml])
+feb_files = fem.callback([mesh_files])
+
