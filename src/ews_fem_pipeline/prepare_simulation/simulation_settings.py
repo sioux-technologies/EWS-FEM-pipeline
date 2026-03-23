@@ -178,7 +178,7 @@ class HGOProperties(ExtendedBaseModel):
         info = self.model_fields['c'].metadata[0]
         ET.SubElement(parent, info.tag, **info.xml_dict).text = f"{self.c}"
         mat_axis = ET.SubElement(parent, "mat_axis", type='spherical')
-        ET.SubElement(mat_axis, "center").text = f"0,{breast_radius},0"
+        ET.SubElement(mat_axis, "center").text = f"0,{float(1/2*breast_radius)},0"
         ET.SubElement(mat_axis, "vector").text = "1,0,0"
 
 class MRTumorProperties(MRProperties):
@@ -234,11 +234,9 @@ class MaterialSettings(ExtendedBaseModel):
         pressure_model="default",
         k1=2.5,
         k2=14.5,
-        gamma=45,
+        gamma=15,
         kappa=1 / 6,
         c=100,
-        fiber_dir_a="0,1,0",
-        fiber_dir_d="1,0,0",
     )
     glandular: MRProperties = MRProperties(
         density=1041,
@@ -331,25 +329,6 @@ def write_elements_to_xml(parent, mesh):
                         tissue.nodes[i][8], tissue.nodes[i][9] = tissue.nodes[i][9], tissue.nodes[i][8]
                     nodes_str = ",".join([f"{n}" for n in tissue.nodes[i]])
                     ET.SubElement(elem_elem, "elem", id=tag).text = nodes_str
-
-# def write_fiber_map_to_xml(parent, mesh):
-#     for name in ["adipose"]:
-#         tissue = getattr(mesh.tissue_parts, name)
-#         meshdata = ET.SubElement(parent, 'MeshData')
-#         elem_map_a = ET.SubElement(meshdata, 'ElementData', name=f"{name}_map_a", elem_set = tissue)
-#         elem_map_d = ET.SubElement(meshdata, 'ElementData', name=f"{name}_map_d", elem_set = tissue)
-#         for i in np.argsort(tissue.elements):
-#             elem_tag = str(tissue.elements[i])
-#             node_tag = tissue.nodes[i][0]
-#             coord_elem = mesh.nodes.coords[node_tag]
-#             fiber_direction_a = coord_elem*-1+[0,0.07,0]
-#             fiber_direction_a_norm = fiber_direction_a/np.linalg.norm(fiber_direction_a)
-#             fiber_direction_d = coord_elem*[1,-1,-1]+[0,0.07,0]
-#             fiber_direction_d_norm = fiber_direction_d/np.linalg.norm(fiber_direction_d)
-#             dir_a_str = ",".join([f"{n}" for n in fiber_direction_a_norm])
-#             dir_d_str = ",".join([f"{n}" for n in fiber_direction_d_norm])
-#             ET.SubElement(elem_map_a, "elem", lid=elem_tag).text = dir_a_str
-#             ET.SubElement(elem_map_d, "elem", lid=elem_tag).text = dir_d_str  #TODO: add variable breast_radius
 
 
 class TimeStepperSettingsStep1(ExtendedBaseModel):
