@@ -6,10 +6,10 @@ from load_data import load_obj_file, point_clicker
 from ews_fem_pipeline.prepare_simulation import Settings, write_settings_to_toml
 from ews_fem_pipeline.prepare_simulation import generate_mesh, write_to_feb
 from ews_fem_pipeline.cli import generate, fem
-from ews_fem_pipeline.convert_simulation import feb_to_3d
+from ews_fem_pipeline.convert_simulation.feb_to_3d import feb_to_3d
 
 def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid):
-    more_points = np.array(point_clicker(skin, message = 'Click points around breast area'))
+    more_points = np.array(point_clicker(skin, message = 'Click points around breast area '))
     more_points[:, 1] = 0
     breast_circumf = pv.Spline(more_points, closed=True)
     breast_area = breast_circumf.delaunay_2d()
@@ -21,7 +21,7 @@ def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid):
     return skin_segmented
 
 # filepath = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\output\all_static_settings_HGO_no_tumor.obj")
-filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3031.01.lr.frame_001.obj")
+filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3032_01_lr.frame_001.obj")
 skin = load_obj_file(filepath)
 nipple_coord = point_clicker(skin, message='Click point for nipple')
 
@@ -49,12 +49,14 @@ for theta in np.linspace(0,2*np.pi, m, endpoint=False):
             inters.append([np.nan, np.nan, np.nan])
 
 settings=Settings()
-settings.model.geometry.radius = float(np.abs((bounds[2]-bounds[3])))
+settings.model.geometry.radius_breast = float(np.abs((bounds[2]-bounds[3])))
+settings.model.geometry.radius_nipple = float(0.01)
+settings.simulation.control_step2.time_steps = float(0)
 folder = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization")
 filepath_out = Path(folder) / filepath.stem
 filepath_out_toml = filepath_out.with_suffix(f'.toml')
 write_settings_to_toml(filepath = filepath_out_toml, settings = settings)
 
 mesh_files = generate.callback([filepath_out_toml])
-feb_files = fem.callback([mesh_files])
-
+feb_files = fem.callback(mesh_files, jobs=0)
+feb_to_3d(feb_files)
