@@ -53,7 +53,7 @@ def match_settings(skin: pv.PolyData):
     bounds = np.array(skin.bounds)
     settings = Settings()
     settings.model.geometry.radius_breast = float(np.abs((bounds[2] - bounds[3])))
-    settings.model.geometry.radius_nipple = float(0.01)
+    settings.model.geometry.radius_nipple = float(0.005)
     settings.model.mesh.order = 1
     settings.simulation.control_step2.time_steps = float(0)
     return settings
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     obj_files = feb_to_3d(feb_files[0])
 
     surface = load_obj_file(obj_files, switch_axes=False)
-    surface.translate([0, -surface.bounds[3]], inplace=True)
+    surface.translate(-1*surface.points[np.argmax(surface.points[:,1])], inplace=True)
     surface= surface.extract_surface(algorithm=None)
     projected_model = project_front(surface, points)
 
