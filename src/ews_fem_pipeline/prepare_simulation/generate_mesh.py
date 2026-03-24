@@ -79,8 +79,8 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     build.cut([(3, 3)], [(3, 2)], removeTool=True)
 
     # Add duct and nipple as a cylinder
-    build.addCylinder(0, settings.model.geometry.radius_breast - 0.02, 0, 0, 0.023, 0,
-                      settings.model.geometry.radius_nipple, tag=4)
+    build.addCylinder(0, settings.model.geometry.radius_breast - 0.02, 0, 0, 0.02+settings.model.geometry.height_nipple,
+                      0, settings.model.geometry.radius_nipple, tag=4)
     # Fuse duct/nipple with glandular tissue
     build.fuse([(3, 3)], [(3, 4)], tag=5)
     # Separate glandular from adipose tissue
