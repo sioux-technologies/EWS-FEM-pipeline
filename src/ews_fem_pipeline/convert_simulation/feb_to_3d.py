@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 def feb_to_3d(filepath: Path, suffix = '.obj', remove_chest=False) -> Path:
+
     assert filepath.suffix == ".feb", "The input file does not have the correct file extension. Must be .feb"
 
     # Get name of input file
@@ -43,4 +44,5 @@ def feb_to_3d(filepath: Path, suffix = '.obj', remove_chest=False) -> Path:
         surfs, _ = surfs.remove_points(chest_surf_ids)
 
     surfs.save(filepath_name.with_suffix(suffix))
+    logger.info(f"Saving perturbed mesh as .obj file at: {filepath_name.with_suffix(suffix)}.")
     return filepath_name.with_suffix(suffix)
