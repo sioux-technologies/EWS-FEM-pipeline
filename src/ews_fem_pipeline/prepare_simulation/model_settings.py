@@ -55,8 +55,8 @@ class MeshSettings(BaseModel):
     optimize: bool = True
     order: int = Field(2, ge=1, le=2)
 
-    _surface_map = {1: ' tri3', 2: 'tri6'}
-    _volume_map = {1: ' tet4', 2: 'tet10'}
+    _surface_map = {1: 'tri3', 2: 'tri6'}
+    _volume_map = {1: 'tet4', 2: 'tet10'}
 
     @property
     def elem_type_surface(self):
