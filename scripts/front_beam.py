@@ -57,7 +57,7 @@ def match_settings(skin: pv.PolyData):
 
 if __name__ == "__main__":
     # Import target surface and determine center (nipple)
-    filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3034_01_lr.frame_001.obj")
+    filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3031_01_lr.frame_001.obj")
     skin = load_obj_file(filepath, scale = 0.2) #data is not to scale, hence the 0.2 (guesstimated)
 
     # Translate such that the nipple is at the origin
@@ -96,10 +96,8 @@ if __name__ == "__main__":
     pcd_target = o3d.geometry.PointCloud()
     pcd_target.points = o3d.utility.Vector3dVector(np.array(projected_real))
 
-
+    # compute initial RMSE and transformation
     correspondence = o3d.utility.Vector2iVector(np.repeat(np.where(np.sum(projected_real, axis=1) != np.nan), 2).reshape(-1, 2))
-
-
     estimator = o3d.pipelines.registration.TransformationEstimationPointToPoint()
     print(estimator.compute_rmse(pcd_target, pcd_model, correspondence))
     transformation = estimator.compute_transformation(pcd_model, pcd_target, correspondence)
@@ -107,8 +105,8 @@ if __name__ == "__main__":
     pcd_model_trans = copy.deepcopy(pcd_model).transform(transformation)
     print(estimator.compute_rmse(pcd_target, pcd_model_trans, correspondence))
 
-
+    # show aligned pointclouds
     pcd_model_trans.paint_uniform_color([1, 0.706, 0]) #yellow
     pcd_target.paint_uniform_color([0, 0.651, 0.929]) #blue
-    o3d.visualization.draw_geometries([pcd_target, pcd_model_trans, pcd_model])
+    o3d.visualization.draw_geometries([pcd_target, pcd_model_trans])
 
