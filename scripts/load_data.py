@@ -5,10 +5,12 @@ import numpy as np
 
 #  Assign the path to the folder of data you wish to load in.
 
-def load_obj_file(filepath: Path, switch_axes = True) -> pv.UnstructuredGrid:
+def load_obj_file(filepath: Path, switch_axes = True, scale=None) -> pv.UnstructuredGrid:
     skin = pv.read(filepath)
     if switch_axes:
         skin.points[:, [0,1]] = skin.points[:,[1,0]] #swap x- and y-axis to match model output
+    if scale:
+        skin.points = scale*skin.points
     return skin
 
 def point_clicker(skin: pv.PolyData | pv.UnstructuredGrid, message : str = "") -> list:
@@ -22,7 +24,7 @@ def point_clicker(skin: pv.PolyData | pv.UnstructuredGrid, message : str = "") -
     def point_saver(picked_points):
         nonlocal point_temp
         picked_points.append(point_temp)
-        print('Point', str(point_temp), ' Confirmed. Select another point or press Q to exit.')
+        print('Point', str(point_temp), ' confirmed. Select another point or press Q to exit.')
         point_temp = tuple(point_temp)
         pl.add_points(np.array(point_temp), render_points_as_spheres=True, color = 'red', point_size=10)
         pl.render()
