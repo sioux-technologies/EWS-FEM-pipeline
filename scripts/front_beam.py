@@ -1,3 +1,4 @@
+import copy
 from pathlib import Path
 
 import numpy as np
@@ -7,6 +8,8 @@ from ews_fem_pipeline.prepare_simulation import Settings, write_settings_to_toml
 from ews_fem_pipeline.prepare_simulation import generate_mesh, write_to_feb
 from ews_fem_pipeline.cli import generate, fem
 from ews_fem_pipeline.convert_simulation.feb_to_3d import feb_to_3d
+
+import open3d as o3d
 
 
 def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid):
@@ -59,25 +62,28 @@ def match_settings(skin: pv.PolyData):
     return settings
 
 if __name__ == "__main__":
-
+    # Import target surface and determine center (nipple)
     filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3032_01_lr.frame_001.obj")
     skin = load_obj_file(filepath)
-    nipple_coord = point_clicker(skin, message='Click point for nipple')
+    nipple_coord = point_clicker(skin, message='Click point for nipple ')
 
-    #translate such that the nipple is at the origin
+    # Translate such that the nipple is at the origin
     skin_pd = pv.PolyData(skin.points)
     skin_pd.translate(-1*nipple_coord[0], inplace=True)
     skin.points = skin_pd.points*0.25
 
+    # Segment the breast and get projection points
     skin_segmented = extract_breast(skin)
     points, projected_real = projection_points(skin_segmented)
     settings = match_settings(skin_segmented)
 
+    # Prepare settings and output files
     folder = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization")
     filepath_out = Path(folder) / filepath.stem
     filepath_out_toml = filepath_out.with_suffix(f'.toml')
     write_settings_to_toml(filepath = filepath_out_toml, settings = settings)
 
+    # Generate model
     mesh_files = generate.callback([filepath_out_toml])
     feb_files = fem.callback(mesh_files, jobs=0)
     obj_files = feb_to_3d(feb_files[0])
@@ -87,10 +93,22 @@ if __name__ == "__main__":
     surface= surface.extract_surface(algorithm=None)
     projected_model = project_front(surface, points)
 
-    plotter = pv.Plotter()
-    plotter.add_axes()
-    plotter.add_points(np.array(projected_model), color="red")
-    plotter.add_points(np.array(projected_real), color="blue")
-    plotter.add_points(np.array([0,0,0]), color="green")
-    plotter.show()
 
+    pcd_model = o3d.geometry.PointCloud()
+    pcd_model.points = o3d.utility.Vector3dVector(np.array(projected_model))
+    pcd_target = o3d.geometry.PointCloud()
+    pcd_target.points = o3d.utility.Vector3dVector(np.array(projected_real))
+    evaluation = o3d.pipelines.registration.evaluate_registration(
+        pcd_target, pcd_model, 1)
+    pcd_model_trans = copy.deepcopy(pcd_model)
+    print(evaluation)
+
+    reg_p2p = o3d.pipelines.registration.registration_icp(pcd_target, pcd_model, 1, estimation_method=o3d.pipelines.registration.TransformationEstimationPointToPoint())
+    pcd_model_trans.transform(1*reg_p2p.transformation)
+    evaluation = o3d.pipelines.registration.evaluate_registration(
+        pcd_target, pcd_model_trans, 1)
+    print(evaluation)
+
+    pcd_model_trans.paint_uniform_color([1, 0.706, 0])
+    pcd_target.paint_uniform_color([0, 0.651, 0.929])
+    o3d.visualization.draw_geometries([pcd_target, pcd_model_trans])
