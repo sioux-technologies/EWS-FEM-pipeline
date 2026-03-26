@@ -26,7 +26,8 @@ class GeometrySettings(BaseModel):
     radius_breast: float = 0.07
     thickness_chest_wall: float = 0.002
     radius_nipple: float = 0.005
-    scaling_factor_glandular: float = 0.8
+    scaling_factor_glandular_y: float = 0.9
+    scaling_factor_glandular_xz: float = 0.8
     angle_nipple: float = 30
     asym_p1: float = 0.12
     asym_p2: float = 0.02
