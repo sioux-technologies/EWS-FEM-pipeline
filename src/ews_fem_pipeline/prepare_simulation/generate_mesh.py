@@ -57,11 +57,14 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     build.remove(build.getEntities(dim=0))
 
     # Build shape of torso
-    build.addCylinder(0, -(1 / 2 * settings.model.geometry.radius_breast / np.sin(
-        1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), -0.2,
-                      0, 0, 0.4,
-                      (1 / 2 * settings.model.geometry.radius_breast / np.sin(
-                          1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), tag=2)
+    if settings.model.geometry.angle_nipple != 0:
+        build.addCylinder(0, -(1 / 2 * settings.model.geometry.radius_breast / np.sin(
+            1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), -0.2,
+                          0, 0, 0.4,
+                          (1 / 2 * settings.model.geometry.radius_breast / np.sin(
+                              1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), tag=2)
+    else:
+        build.addBox(-0.5, 0, -0.5, 1, -1, 1, tag = 2)
 
     # Build glandular tissue by copying and downscaling breast volume
     build.copy([(3, 1)])  # tag = 3
