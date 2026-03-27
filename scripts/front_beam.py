@@ -1,7 +1,10 @@
+from limols import LimolsSettings, LimolsSolver
 import copy
 from pathlib import Path
 import numpy as np
 import pyvista as pv
+from pyvista import raise_has_duplicates
+
 from load_data import load_obj_file, point_clicker
 from ews_fem_pipeline.prepare_simulation import Settings, write_settings_to_toml
 from ews_fem_pipeline.cli import generate, fem
@@ -45,37 +48,27 @@ def project_front(surface: pv.PolyData | Path, points: np.ndarray):
         else:
             intercepts.append([np.nan, np.nan, np.nan])
     return intercepts
-
-def match_settings(skin: pv.PolyData):
-    bounds = np.array(skin.bounds)
+def write_settings(params: np.ndarray, folder, title):
     settings = Settings()
-    settings.model.geometry.radius_breast = float(np.abs((bounds[2] - bounds[3])))
+    #set fixed settings for this problem
     settings.model.geometry.radius_nipple = float(0.005)
     settings.model.mesh.order = 1
     settings.simulation.control_step2.time_steps = float(0)
-    return settings
+    #set variable settings
+    settings.model.geometry.radius_breast = float(params[0])
+    settings.model.geometry.asym_p1 = float(params[1])
+    settings.model.geometry.asym_p2 = float(params[2])
+    settings.model.geometry.asym_p3 = float(params[3])
+    settings.model.geometry.angle_nipple = float(params[4])
+    filepath_out_toml = (Path(folder) / title).with_suffix('.toml')
+    write_settings_to_toml(filepath=filepath_out_toml, settings=settings)
+    return filepath_out_toml
 
-if __name__ == "__main__":
-    # Import target surface and determine center (nipple)
-    filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3031_01_lr.frame_001.obj")
-    skin = load_obj_file(filepath, scale = 0.2) #data is not to scale, hence the 0.2 (guesstimated)
 
-    # Translate such that the nipple is at the origin
-    nipple_coord = point_clicker(skin, message='Click point for nipple. ')
-    skin.translate(-1*nipple_coord[0], inplace=True)
 
-    # Segment the breast and get projection points
-    skin_segmented = extract_breast(skin)
-    points, projected_real = generate_projection_points(skin_segmented)
-
-    # Prepare settings and output files
-    folder = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization")
-    filepath_out = Path(folder) / filepath.stem
-    filepath_out_toml = filepath_out.with_suffix(f'.toml')
-
-    # first guess for radius and write settings
-    first_guess_settings = match_settings(skin)
-    write_settings_to_toml(filepath = filepath_out_toml, settings = match_settings(skin_segmented))
+def breast_model(params, projected_real, points, folder, title):
+    # Write parameters to settings file
+    filepath_out_toml = write_settings(params, folder, title)
 
     # Generate mesh, run, and generate displaced mesh .obj file
     mesh_files = generate.callback([filepath_out_toml])
@@ -96,17 +89,78 @@ if __name__ == "__main__":
     pcd_target = o3d.geometry.PointCloud()
     pcd_target.points = o3d.utility.Vector3dVector(np.array(projected_real))
 
-    # compute initial RMSE and transformation
-    correspondence = o3d.utility.Vector2iVector(np.repeat(np.where(np.sum(projected_real, axis=1) != np.nan), 2).reshape(-1, 2))
+    # compute transformation and SE
+    correspondence = o3d.utility.Vector2iVector(np.repeat(np.where(np.sum(projected_real, axis=1) != np.nan), 2)
+                                                .reshape(-1, 2))
     estimator = o3d.pipelines.registration.TransformationEstimationPointToPoint()
-    print(estimator.compute_rmse(pcd_target, pcd_model, correspondence))
     transformation = estimator.compute_transformation(pcd_model, pcd_target, correspondence)
-    # Copy model cloud and transform
-    pcd_model_trans = copy.deepcopy(pcd_model).transform(transformation)
-    print(estimator.compute_rmse(pcd_target, pcd_model_trans, correspondence))
+    pcd_model.transform(transformation)
+    sq_err = np.sum(np.square(np.array(pcd_target.points) - np.array(pcd_model.points)), axis=1)
+    return sq_err
 
-    # show aligned pointclouds
-    pcd_model_trans.paint_uniform_color([1, 0.706, 0]) #yellow
-    pcd_target.paint_uniform_color([0, 0.651, 0.929]) #blue
-    o3d.visualization.draw_geometries([pcd_target, pcd_model_trans])
+    # return residuals
+if __name__ == "__main__":
+    ### Prepare input data
+    # Import target surface and determine center (nipple)
+    filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3031_01_lr.frame_001.obj")
+    skin = load_obj_file(filepath, scale = 0.2) #data is not to scale, hence the 0.2 (guesstimated)
 
+    # Translate such that the nipple is at the origin
+    nipple_coord = point_clicker(skin, message='Click point for nipple. ')
+    skin.translate(-1*nipple_coord[0], inplace=True)
+
+    # Segment the breast and get projection points
+    skin_segmented = extract_breast(skin)
+    points, projected_real = generate_projection_points(skin_segmented)
+
+    # Prepare settings and output files
+    folder = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization")
+    title = filepath.stem
+
+    # first guess for radius and write settings
+    bounds = np.array(skin.bounds)
+    guess_radius_breast = float(1/2*np.abs((bounds[0] - bounds[1])))
+    params = np.array([guess_radius_breast, 0, 0, 0, 0])
+
+    ### Run model simulations
+    settings_limols = LimolsSettings(x0=params, n_residuals=len(points))
+    solver = LimolsSolver(settings_limols)
+
+    parameter, expected_residual, step_size = solver.get_initial_step()
+
+    residual = breast_model(parameter, projected_real, points, folder, title)
+    parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
+    # # Generate mesh, run, and generate displaced mesh .obj file
+    # mesh_files = generate.callback([filepath_out_toml])
+    # feb_files = fem.callback(mesh_files, jobs=0)
+    # obj_files = feb_to_3d(feb_files[0])
+    #
+    # # Load resulting mesh
+    # surface = load_obj_file(obj_files, switch_axes=False)
+    # # Translate to have nipple at (0,0,0)
+    # surface.translate(-1*surface.points[np.argmax(surface.points[:,1])], inplace=True)
+    # #Project projection points on model mesh
+    # surface= surface.extract_surface(algorithm=None)
+    # projected_model = project_front(surface, points)
+    #
+    # #Load both clouds into open3d
+    # pcd_model = o3d.geometry.PointCloud()
+    # pcd_model.points = o3d.utility.Vector3dVector(np.array(projected_model))
+    # pcd_target = o3d.geometry.PointCloud()
+    # pcd_target.points = o3d.utility.Vector3dVector(np.array(projected_real))
+    #
+    # # compute initial RMSE and transformation
+    # correspondence = o3d.utility.Vector2iVector(np.repeat(np.where(np.sum(projected_real, axis=1) != np.nan), 2).reshape(-1, 2))
+    # estimator = o3d.pipelines.registration.TransformationEstimationPointToPoint()
+    # print(estimator.compute_rmse(pcd_target, pcd_model, correspondence))
+    # transformation = estimator.compute_transformation(pcd_model, pcd_target, correspondence)
+    #
+    # # Copy model cloud and transform
+    # pcd_model_trans = copy.deepcopy(pcd_model).transform(transformation)
+    # print(estimator.compute_rmse(pcd_target, pcd_model_trans, correspondence))
+    #
+    # # show aligned pointclouds
+    # pcd_model.paint_uniform_color([1, 0.706, 0]) #yellow
+    # pcd_target.paint_uniform_color([0, 0.651, 0.929]) #blue
+    # o3d.visualization.draw_geometries([pcd_target, pcd_model])
+    # print(np.sum(np.square(np.array(pcd_target.points) - np.array(pcd_model.points)), axis=1))
