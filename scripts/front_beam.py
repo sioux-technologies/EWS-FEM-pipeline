@@ -105,7 +105,9 @@ def center_breast(skin: pv.PolyData | pv.UnstructuredGrid, nipple_coord: tuple =
     if nipple_coord is None:
         # Translate such that the nipple is at the origin
         nipple_coord = point_clicker(skin, message='Click point for nipple. ')
-    skin.translate(-1 * nipple_coord[0], inplace=True)
+        skin.translate(-1 * nipple_coord[0], inplace=True)
+    else:
+        skin.translate(-1*nipple_coord, inplace=True)
     test_sphere = pv.Sphere(radius=0.02, center=(0, 0, 0))
     nipple_area = skin.select_interior_points(test_sphere, inside_out=False)
     nipple_area = nipple_area.threshold(0.5)
