@@ -13,7 +13,7 @@ def load_obj_file(filepath: Path, switch_axes = False, scale=None) -> pv.Unstruc
         skin.points = scale*skin.points
     return skin
 
-def point_clicker(skin: pv.PolyData | pv.UnstructuredGrid, message : str = "") -> list:
+def point_clicker(skin: pv.PolyData | pv.UnstructuredGrid, message : str = "", rotation=True) -> list:
     clicked_points = []
     point_temp = None
     def point_selector(point):
@@ -31,12 +31,15 @@ def point_clicker(skin: pv.PolyData | pv.UnstructuredGrid, message : str = "") -
 
     wrapped_point_saver = partial(point_saver, picked_points=clicked_points)
     pl=pv.Plotter()
+    if not rotation:
+        pl.enable_custom_trackball_style(left = 'pan', right = 'pan', control_left='pan', control_right='pan')
     pl.add_mesh(skin)
     pl.enable_point_picking(callback=point_selector, picker = 'point',
                                     show_message=message + 'press enter to confirm, press Q when done.',
                                     left_clicking=True)
     pl.add_key_event('Return', wrapped_point_saver)
     pl.view_xz(negative=True)
+    pl.enable_parallel_projection()
     pl.show()
 
     return clicked_points
