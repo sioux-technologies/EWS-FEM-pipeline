@@ -14,7 +14,7 @@ from ews_fem_pipeline.convert_simulation.feb_to_3d import feb_to_3d
 import open3d as o3d
 
 def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid):
-    more_points = np.array(point_clicker(skin, message='Click points around breast area '))
+    more_points = np.array(point_clicker(skin, message='Click points around breast area ', rotation=False))
     more_points[:, 1] = 0
     breast_circumf = pv.Spline(more_points, closed=True)
     breast_area = breast_circumf.delaunay_2d()
@@ -78,7 +78,7 @@ def breast_model(params, projected_real, points, folder, title):
 
     # Load resulting mesh
     surface = load_obj_file(obj_files, switch_axes=False)
-    center_breast()
+    center_breast(surface, nipple_coord = surface.points[np.argmax(surface.points[:, 1])])
     #Project projection points on model mesh
     surface= surface.extract_surface(algorithm=None)
     projected_model = project_front(surface, points)
@@ -101,9 +101,10 @@ def breast_model(params, projected_real, points, folder, title):
     # return residuals
 
 
-def center_breast(skin: pv.PolyData | pv.UnstructuredGrid):
-    # Translate such that the nipple is at the origin
-    nipple_coord = point_clicker(skin, message='Click point for nipple. ')
+def center_breast(skin: pv.PolyData | pv.UnstructuredGrid, nipple_coord: tuple = None):
+    if nipple_coord is None:
+        # Translate such that the nipple is at the origin
+        nipple_coord = point_clicker(skin, message='Click point for nipple. ')
     skin.translate(-1 * nipple_coord[0], inplace=True)
     test_sphere = pv.Sphere(radius=0.02, center=(0, 0, 0))
     nipple_area = skin.select_interior_points(test_sphere, inside_out=False)
