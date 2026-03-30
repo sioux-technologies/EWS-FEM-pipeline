@@ -1,10 +1,11 @@
 import logging
 import math
-
+from typing import Any
 import gmsh
 import numpy as np
 
-from ews_fem_pipeline.prepare_simulation.model_settings import MeshParts
+
+from ews_fem_pipeline.prepare_simulation.model_settings import MeshParts, TissueParts
 from ews_fem_pipeline.prepare_simulation.simulation_settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -16,7 +17,6 @@ def generate_mesh(settings: Settings) -> MeshParts:
     and geometry classes. These settings are explained in detail in model_settings.py under the MeshSettings and GeometrySettings
     classes.
     """
-
     mesh_parts = MeshParts()
 
     gmsh.initialize()
@@ -26,146 +26,140 @@ def generate_mesh(settings: Settings) -> MeshParts:
     # Set option to suppress all output of the mesher to the console.
     gmsh.option.setNumber("General.Verbosity", 0)
 
-    # Dimension of object
-    dim0 = 0
-    dim1 = 1
-    dim2 = 2
-    dim3 = 3
-
     # Rename objects to alias
-    build = gmsh.model.occ
-    mesh = gmsh.model.mesh
+    build_geometry(gmsh.model.occ, mesh_parts, settings)
+    build_mesh(gmsh.model.mesh, mesh_parts.tissue_parts, settings)
+    prep_for_output(mesh_parts)
 
+    gmsh.finalize()
+
+    return mesh_parts
+
+def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     #############################
-    # Construct breast quadrant #
+    # Construct breast surface  #
     #############################
+    surface_control_points = construct_bspline_points(build, settings, 17, 8)
+    # Define knots and multiplicities for closed surface
+    knots = np.linspace(0, 1, 17+2)
+    mults = np.concatenate(([2], np.ones(17), [2]))
+    # Build breast surface
+    build.addBSplineSurface(surface_control_points.flatten(order='F'), len(surface_control_points), knotsU=knots,
+                            multiplicitiesU=mults,
+                            degreeU=2)
+    # Build breast volume
+    build.addCurveLoop([3], tag=2)
+    build.addSurfaceFilling(2, tag=2)
+    build.addSurfaceLoop([1, 2], tag=1)
+    build.addVolume([1], tag=1)
 
-    points = {}
-    lines = {}
-    loops = {}
-    surfs = {}
+    # remove control points
+    build.remove(build.getEntities(dim=0))
 
-    points[1] = build.addPoint(0, 0, 0, settings.model.mesh.ls, 1)  # Origin point
-    points[2] = build.addPoint(0, settings.model.geometry.radius, 0, settings.model.mesh.ls, 2)  # Point along rotation axis
-    points[3] = build.addPoint(0, 0, settings.model.geometry.radius, settings.model.mesh.ls,
-                        3)  # Point perpendicular up to rotation axis
+    # Build shape of torso
+    build.addCylinder(0, -(1 / 2 * settings.model.geometry.radius_breast / np.sin(
+        1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), -0.2,
+                      0, 0, 0.4,
+                      (1 / 2 * settings.model.geometry.radius_breast / np.sin(
+                          1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), tag=2)
 
-    lines[1] = build.addLine(points[1], points[2], 1)
-    lines[2] = build.addCircleArc(points[2], points[1], points[3], 2)  # Lower circle arc of breast
-    lines[3] = build.addLine(points[3], points[1], 3)  # Line perpendicular up to rotation axis
+    # Build glandular tissue by copying and downscaling breast volume
+    build.copy([(3, 1)])  # tag = 3
+    build.dilate([(3, 3)], 0, 1 / 2 * settings.model.geometry.radius_breast, 0,
+                 settings.model.geometry.scaling_factor_glandular_xz, settings.model.geometry.scaling_factor_glandular_y,
+                 settings.model.geometry.scaling_factor_glandular_xz)
 
-    loops[1] = build.addCurveLoop([lines[1], lines[2], lines[3]], 1)
-    surfs[1] = build.addPlaneSurface([loops[1]], 1)
+    # Cut torso from breast shape
+    build.cut([(3, 1)], [(3, 2)], removeTool=False)
+    # Move and cut torso from glandular tissue to ensure a stable layer of adipose tissue on chest
+    build.translate([(3, 2)], 0, settings.model.geometry.thickness_chest_wall, 0)
+    build.cut([(3, 3)], [(3, 2)], removeTool=True)
 
-    points[4] = build.addPoint(0, -settings.model.geometry.left_position_ellipse, 0, settings.model.mesh.ls, 4)
-    points[5] = build.addPoint(0, settings.model.geometry.radius + settings.model.geometry.position_nipple, 0, settings.model.mesh.ls, 5)
-    points[6] = build.addPoint(0, (settings.model.geometry.radius + settings.model.geometry.position_nipple - settings.model.geometry.left_position_ellipse) / 2,
-                        -settings.model.geometry.position_center_ellipse,
-                        settings.model.mesh.ls, 6)
+    # Add duct and nipple as a cylinder
+    build.addSphere(0, settings.model.geometry.radius_breast-0.001, 0, settings.model.geometry.radius_nipple, tag=6)
+    build.addCylinder(0, settings.model.geometry.radius_breast - 0.04, 0, 0, 0.039,
+                      0, settings.model.geometry.radius_nipple, tag=4)
+    # Fuse duct/nipple with glandular tissue
+    build.fuse([(3, 3)], [(3, 4), (3,6)], tag=5)
+    # Separate glandular from adipose tissue
+    build.cut([(3, 1)], [(3, 5)], removeTool=False)
 
-    lines[4] = build.addEllipseArc(points[4], points[6], points[5], points[5], 4)
-    lines[5] = build.addLine(points[4], points[5], 5)
+    all_surfaces = build.getEntities(dim=2)
+    all_volumes = build.getEntities(dim=3)
 
-    loops[2] = build.addCurveLoop([lines[4], lines[5]], 2)
-    surfs[2] = build.addPlaneSurface([loops[2]], 2)
+    # Fragment full model. Ensures no surfaces and volumes overlap. Note: replaces all tags!
+    build.fragment(all_volumes, all_surfaces)
 
-    # Add back side breast
-    points[7] = build.addPoint(0, -settings.model.geometry.thickness_chest_wall, settings.model.geometry.radius, settings.model.mesh.ls, 7)
-    points[8] = build.addPoint(0, -settings.model.geometry.thickness_chest_wall, 0, settings.model.mesh.ls, 8)
-
-    lines[6] = build.addLine(points[3], points[7], 6)
-    lines[7] = build.addLine(points[7], points[8], 7)
-    lines[8] = build.addLine(points[8], points[1], 8)
-
-    loops[3] = build.addCurveLoop(([lines[8], lines[3], lines[6], lines[7]]))
-    surfs[3] = build.addPlaneSurface([loops[3]])
-
-    # Fragment entire mesh in different regions (Assigns news points to intersection of curves)
-    build.fragment([(dim2, surfs[1]), (dim2, surfs[2])], [(dim2, surfs[3])])
-
-    # Get indices of all (including newly formed due to fragment) objects
-    all_points = build.getEntities(dim0)
-    all_lines = build.getEntities(dim1)
-    all_surfaces = build.getEntities(dim2)
-
-    # Name all points with convention p{tag}
-    for i in range(len(all_points)):
-        idx = all_points[i][1]
-        points[idx] = idx
-
-    # Name all lines with convention l{tag}
-    for i in range(len(all_lines)):
-        idx = all_lines[i][1]
-        lines[idx] = idx
-
-    # Remove all surfaces as we will be rebuilding them
-    build.remove(all_surfaces)
-    # Remove all points that we will not need anymore. Note, first we remove the lines, then the points,
-    # as lines are constructed by connecting points
-    build.remove([
-        (dim1, lines[3]),
-        (dim1, lines[4]),
-        (dim1, lines[5]),
-        (dim1, lines[7]),
-        (dim1, lines[8]),
-        (dim1, lines[9]),
-        (dim1, lines[11]),
-        (dim1, lines[12]),
-        (dim1, lines[14]),
-    ])
-    build.remove([
-        (dim0, points[6]),
-        (dim0, points[10]),
-        (dim0, points[12]),
-        (dim0, points[14]),
-    ])
-
-    # Add lines to complete reconstruction
-    lines[3] = build.addLine(points[16], points[13], 3)
-    lines[4] = build.addLine(points[8], points[15], 4)
-
-    ###############################################
-    # Construct 3D geometry by revolving quadrant #
-    ###############################################
-
-    # Get all lines and revolves around major axis
-    all_current_lines = build.getEntities(dim1)
-    build.revolve(all_current_lines, 0, 0, 0, 0, 1, 0, 2 * math.pi)
-
-    # Alias for tissues. Only includes tissues, no nodes
-    tissues = mesh_parts.tissue_parts
-
-    # Construct and assign surfaces and volumes for different tissues
-    surfloop_gland = build.addSurfaceLoop([1, 2, 5])
-    surfloop_fat = build.addSurfaceLoop([1, 2, 3, 4, 6])
-
-    # Surface tags for skin and chest
-    tissues.skin.tags = [9, 10]
-    tissues.chest.tags = 11
-    tissues.glandular.tags = build.addVolume([surfloop_gland])
-    tissues.adipose.tags = build.addVolume([surfloop_fat])
+    assign_tissues(build, mesh_parts.tissue_parts)
 
     # Remove lingering elements
-    build.fragment([(dim3, 1)], [(dim3, 2)])
-    build.remove(build.getEntities(dim2))
-    build.remove(build.getEntities(dim1))
-    build.remove(build.getEntities(dim0))
+    build.remove(build.getEntities(dim=2))
+    build.remove(build.getEntities(dim=1))
+    build.remove(build.getEntities(dim=0))
 
     # Synchronize the geometry before assigning meshing
     build.synchronize()
 
+
+def assign_tissues(build, tissues: TissueParts):
+    # Construct and assign surfaces and volumes for different tissues ###
+    all_final_volumes = build.getEntities(dim=3)
+    adipose = all_final_volumes[0][1]
+    glandular = all_final_volumes[1][1]
+    tissues.adipose.tags = [adipose]
+    tissues.glandular.tags = [glandular]
+
+    # Surface tags for skin and chest
+    adipose_surfs = build.getSurfaceLoops(adipose)[1][0]
+    glandular_surfs = build.getSurfaceLoops(glandular)[1][0]
+    outer_surfaces = np.setdiff1d(adipose_surfs, glandular_surfs)
+    nipple_surfaces = list(np.setdiff1d(glandular_surfs, adipose_surfs))
+    tissues.skin.tags = [outer_surfaces[0]] + nipple_surfaces
+    tissues.chest.tags = [outer_surfaces[1]]
+
+
+def construct_bspline_points(build, settings: Settings, n_points_u: int, n_points_v: int) -> np.ndarray[Any, np.dtype[np.int_]]:
+    # Points for the breast surface are generated on circle arcs with variable radius to create asymmetry
+    # 3/4 of a "sphere" are generated, this will be cut down later
+
+    # Initialize array for saving points
+    surface_control_points = np.empty((n_points_u, n_points_v), dtype=int)
+
+    # Rotate around the y-axis
+    for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points_u), start=1):
+        radius_var = settings.model.geometry.radius_breast * (1 + settings.model.geometry.asym_p1 * (np.cos(theta) + 1)
+                                                              + settings.model.geometry.asym_p2 * (
+                                                                      np.cos(2 * theta) + 1)
+                                                              + settings.model.geometry.asym_p3 * (
+                                                                      np.cos(3 * theta) + 1))
+        # the points are placed on a circle arc with a radius radius_extra > radius_var
+        radius_extra = radius_var / (np.sin(2 * np.arctan(settings.model.geometry.radius_breast / radius_var)))
+        for j, phi in enumerate(np.linspace(start=0, stop=np.pi, num=n_points_v, endpoint=False)):
+            surface_control_points[i - 1, j] = build.addPoint(radius_extra * np.cos(theta) * np.sin(phi),
+                                                              radius_extra * np.cos(
+                                                                  phi) + settings.model.geometry.radius_breast - radius_extra,
+                                                              radius_extra * np.sin(theta) * np.sin(phi))
+
+    # Close the loop
+    surface_control_points = np.concatenate((surface_control_points, surface_control_points[1, :].reshape(1, -1)),
+                                            axis=0)
+
+    return surface_control_points
+
+
+def build_mesh(mesh, tissues: TissueParts, settings: Settings):
     ####################
     # Generate 3D mesh #
     ####################
 
     # Assign global mesh density by scaling mesh with length of mesh curves
-    curve_list = build.getEntities(dim1)
+    curve_list = gmsh.model.occ.getEntities(dim=1)
     for curve in curve_list:
-        length_curve = build.getMass(dim1, curve[1])
+        length_curve = gmsh.model.occ.getMass(dim=1, tag=curve[1])
         mesh.setTransfiniteCurve(curve[1], int(settings.model.mesh.density * length_curve))
 
     # Generate mesh up to 3D, set to predefined mesh order, and optionally optimize
-    mesh.generate(dim3)
+    mesh.generate(dim=3)
     mesh.setOrder(settings.model.mesh.order)
     if settings.model.mesh.optimize:
         if settings.model.mesh.order == 1:
@@ -174,7 +168,7 @@ def generate_mesh(settings: Settings) -> MeshParts:
             mesh.optimize("HighOrder")
 
     # Here we loop over the tissues and assign the nodes, elements, etc. to the different fields.
-    for name in tissues.model_fields:
+    for name in TissueParts.model_fields:
         if getattr(tissues, name).dim == 2:  # noqa: PLR2004
             getattr(tissues, name).type = settings.model.mesh.elem_type_surface
         else:
@@ -200,6 +194,7 @@ def generate_mesh(settings: Settings) -> MeshParts:
             getattr(tissues, name).elements = elements[0]
             getattr(tissues, name).nodes = nodes[0].reshape(-1, num_nodes)
 
+def prep_for_output(mesh_parts: MeshParts):
     #########################################
     # Extract all nodes and prep for output #
     #########################################
@@ -213,6 +208,3 @@ def generate_mesh(settings: Settings) -> MeshParts:
     mesh_parts.nodes.tags = node_tags[sorted_ids]
     mesh_parts.nodes.coords = node_coords[sorted_ids]
 
-    gmsh.finalize()
-
-    return mesh_parts

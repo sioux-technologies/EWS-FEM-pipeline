@@ -92,6 +92,6 @@ def feb_to_blender(filepath: Path):  # Input should be path to .vtk files
         # Now assign sorted indices to surface
         surface_disp_obj[idx_time] = surface_disp[sort_idx]
 
-    # Save data to binary .npy file file
+    # Save data to binary .npy file
     np.save(str(filepath_npy), surface_disp_obj)
     logger.info(f"Saving displacements: {filepath_npy}.")
