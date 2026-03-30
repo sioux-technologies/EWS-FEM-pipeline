@@ -4,6 +4,8 @@ from pathlib import Path
 import numpy as np
 import pyvista as pv
 from pyvista import raise_has_duplicates
+import logging
+logger = logging.getLogger(__name__)
 
 from load_data import load_obj_file, point_clicker
 from ews_fem_pipeline.prepare_simulation import Settings, write_settings_to_toml
@@ -51,7 +53,7 @@ def project_front(surface: pv.PolyData | Path, points: np.ndarray):
 def write_settings(params: np.ndarray, folder, title):
     settings = Settings()
     #set fixed settings for this problem
-    settings.model.geometry.radius_nipple = float(0.005)
+    settings.model.geometry.radius_nipple = float(0.0075)
     settings.model.mesh.order = 1
     settings.simulation.control_step2.time_steps = float(0)
     #set variable settings
@@ -102,7 +104,7 @@ def breast_model(params, projected_real, points, folder, title):
 if __name__ == "__main__":
     ### Prepare input data
     # Import target surface and determine center (nipple)
-    filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3031_01_lr.frame_001.obj")
+    filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3032_01_lr.frame_001.obj")
     skin = load_obj_file(filepath, scale = 0.2) #data is not to scale, hence the 0.2 (guesstimated)
 
     # Translate such that the nipple is at the origin
@@ -123,13 +125,18 @@ if __name__ == "__main__":
     params = np.array([guess_radius_breast, 0, 0, 0, 0])
 
     ### Run model simulations
-    settings_limols = LimolsSettings(x0=params, n_residuals=len(points))
+    settings_limols = LimolsSettings(x0=params, n_residuals=len(points), scale = np.array([0.1, 0.1, 0.1, 0.1, 40]),
+                                     xu=np.array([0.15, 1, 1, 1, 45]), xl = np.array([0, -1, -1, -1, 0]))
     solver = LimolsSolver(settings_limols)
 
     parameter, expected_residual, step_size = solver.get_initial_step()
-
+    #1st step
     residual = breast_model(parameter, projected_real, points, folder, title)
     parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
+    #2nd step
+    while not solver.done:
+        residual = breast_model(parameter, projected_real, points, folder, title)
+        parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
     # # Generate mesh, run, and generate displaced mesh .obj file
     # mesh_files = generate.callback([filepath_out_toml])
     # feb_files = fem.callback(mesh_files, jobs=0)
