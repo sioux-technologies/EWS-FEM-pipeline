@@ -7,7 +7,7 @@ from pyvista import raise_has_duplicates
 import logging
 logger = logging.getLogger(__name__)
 
-from load_data import load_obj_file, point_clicker
+from scripts.load_data import load_obj_file, point_clicker
 from ews_fem_pipeline.prepare_simulation import Settings, write_settings_to_toml
 from ews_fem_pipeline.cli import generate, fem
 from ews_fem_pipeline.convert_simulation.feb_to_3d import feb_to_3d
@@ -50,6 +50,7 @@ def project_front(surface: pv.PolyData | Path, points: np.ndarray):
         else:
             intercepts.append([np.nan, np.nan, np.nan])
     return intercepts
+
 def write_settings(params: np.ndarray, folder, title):
     settings = Settings()
     #set fixed settings for this problem
@@ -66,8 +67,6 @@ def write_settings(params: np.ndarray, folder, title):
     write_settings_to_toml(filepath=filepath_out_toml, settings=settings)
     return filepath_out_toml
 
-
-
 def breast_model(params, projected_real, points, folder, title):
     # Write parameters to settings file
     filepath_out_toml = write_settings(params, folder, title)
@@ -79,8 +78,7 @@ def breast_model(params, projected_real, points, folder, title):
 
     # Load resulting mesh
     surface = load_obj_file(obj_files, switch_axes=False)
-    # Translate to have nipple at (0,0,0)
-    surface.translate(-1*surface.points[np.argmax(surface.points[:,1])], inplace=True)
+    center_breast()
     #Project projection points on model mesh
     surface= surface.extract_surface(algorithm=None)
     projected_model = project_front(surface, points)
@@ -101,15 +99,32 @@ def breast_model(params, projected_real, points, folder, title):
     return sq_err
 
     # return residuals
+
+
+def center_breast(skin: pv.PolyData | pv.UnstructuredGrid):
+    # Translate such that the nipple is at the origin
+    nipple_coord = point_clicker(skin, message='Click point for nipple. ')
+    skin.translate(-1 * nipple_coord[0], inplace=True)
+    test_sphere = pv.Sphere(radius=0.02, center=(0, 0, 0))
+    nipple_area = skin.select_interior_points(test_sphere, inside_out=False)
+    nipple_area = nipple_area.threshold(0.5)
+    nipple_area = nipple_area.extract_surface(algorithm=None)
+    nipple_normal = np.average(nipple_area.compute_normals()['Normals'], axis=0)
+    nipple_normal = nipple_normal / np.linalg.norm(nipple_normal)
+    rot_axis = np.cross(nipple_normal, (0, 1, 0))
+    rot_axis = rot_axis / np.linalg.norm(rot_axis)
+    rot_angle = np.degrees(np.arccos(np.dot(nipple_normal, (0, 1, 0))))
+    skin.rotate_vector(vector=rot_axis, angle=rot_angle, inplace=True)
+
+
 if __name__ == "__main__":
     ### Prepare input data
     # Import target surface and determine center (nipple)
     filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3032_01_lr.frame_001.obj")
-    skin = load_obj_file(filepath, scale = 0.2) #data is not to scale, hence the 0.2 (guesstimated)
+    skin = load_obj_file(filepath, scale = 0.2, switch_axes=True) #data is not to scale, hence the 0.2 (guesstimated)
 
     # Translate such that the nipple is at the origin
-    nipple_coord = point_clicker(skin, message='Click point for nipple. ')
-    skin.translate(-1*nipple_coord[0], inplace=True)
+    center_breast(skin)
 
     # Segment the breast and get projection points
     skin_segmented = extract_breast(skin)
