@@ -5,10 +5,10 @@ import numpy as np
 
 #  Assign the path to the folder of data you wish to load in.
 
-def load_obj_file(filepath: Path, switch_axes = True, scale=None) -> pv.UnstructuredGrid:
+def load_obj_file(filepath: Path, switch_axes = False, scale=None) -> pv.UnstructuredGrid:
     skin = pv.read(filepath)
     if switch_axes:
-        skin.points[:, [0,1]] = skin.points[:,[1,0]] #swap x- and y-axis to match model output
+        skin.points[:, [0,1,2]] = skin.points[:,[2,0,1]] #swap x- and y-axis to match model output
     if scale is not None:
         skin.points = scale*skin.points
     return skin
@@ -36,7 +36,7 @@ def point_clicker(skin: pv.PolyData | pv.UnstructuredGrid, message : str = "") -
                                     show_message=message + 'press enter to confirm, press Q when done.',
                                     left_clicking=True)
     pl.add_key_event('Return', wrapped_point_saver)
-    pl.view_zx()
+    pl.view_xz(negative=True)
     pl.show()
 
     return clicked_points
@@ -44,5 +44,5 @@ def point_clicker(skin: pv.PolyData | pv.UnstructuredGrid, message : str = "") -
 
 if __name__ == "__main__":
     filepath = Path(
-        r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3032.01.lr.frame_001.obj")
+        r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3032_01_lr.frame_001.obj")
     point_clicker(filepath)
