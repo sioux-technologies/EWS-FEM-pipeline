@@ -9,7 +9,7 @@ def load_obj_file(filepath: Path, switch_axes = True, scale=None) -> pv.Unstruct
     skin = pv.read(filepath)
     if switch_axes:
         skin.points[:, [0,1]] = skin.points[:,[1,0]] #swap x- and y-axis to match model output
-    if scale:
+    if scale is not None:
         skin.points = scale*skin.points
     return skin
 
