@@ -83,7 +83,7 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
 
     # Add duct and nipple as a cylinder
     build.addSphere(0, settings.model.geometry.radius_breast, 0, settings.model.geometry.radius_nipple, tag=6)
-    build.addCylinder(0, settings.model.geometry.radius_breast - 0.04, 0, 0, 0.04,
+    build.addCylinder(0, settings.model.geometry.radius_breast - 0.04, 0, 0, 0.041,
                       0, settings.model.geometry.radius_nipple, tag=4)
     # Fuse duct/nipple with glandular tissue
     build.fuse([(3, 3)], [(3, 4), (3,6)], tag=5)
