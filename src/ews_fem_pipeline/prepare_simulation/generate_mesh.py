@@ -90,7 +90,7 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     # Fragment full model. Ensures no surfaces and volumes overlap. Note: replaces all tags!
     build.fragment(all_volumes, all_surfaces)
 
-    assign_tissues(build, mesh_parts)
+    assign_tissues(build, mesh_parts.tissue_parts)
 
     # Remove lingering elements
     build.remove(build.getEntities(dim=2))
@@ -101,10 +101,7 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     build.synchronize()
 
 
-def assign_tissues(build, mesh_parts: MeshParts):
-    # Alias for tissues. Only includes tissues, no nodes
-    tissues = mesh_parts.tissue_parts
-
+def assign_tissues(build, tissues: TissueParts):
     # Construct and assign surfaces and volumes for different tissues ###
     all_final_volumes = build.getEntities(dim=3)
     adipose = all_final_volumes[0][1]
