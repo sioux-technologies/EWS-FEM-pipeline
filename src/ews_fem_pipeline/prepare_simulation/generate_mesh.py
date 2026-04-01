@@ -68,23 +68,21 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
 
     # Build glandular tissue by copying and downscaling breast volume
     build.copy([(3, 1)])  # tag = 3
-    build.dilate([(3, 3)], 0, 1 / 2 * settings.model.geometry.radius_breast, 0,
+    build.dilate([(3, 3)], 0, 0, 0,
                  settings.model.geometry.scaling_factor_glandular, settings.model.geometry.scaling_factor_glandular,
                  settings.model.geometry.scaling_factor_glandular)
 
     # Cut torso from breast shape
     build.cut([(3, 1)], [(3, 2)], removeTool=False)
     # Move and cut torso from glandular tissue to ensure a stable layer of adipose tissue on chest
-    build.translate([(3, 2)], 0,
-                    (1 / 2 * (
-                    1 - settings.model.geometry.scaling_factor_glandular)) * settings.model.geometry.radius_breast,
-                    0)
+    build.translate([(3, 2)], 0, settings.model.geometry.thickness_chest_wall, 0)
     build.cut([(3, 3)], [(3, 2)], removeTool=True)
 
     # Add duct and nipple as a cylinder
-    build.addSphere(0, settings.model.geometry.radius_breast-0.005, 0, settings.model.geometry.radius_nipple, tag=6)
-    build.addCylinder(0, settings.model.geometry.radius_breast - 0.04, 0, 0, 0.035,
+    build.addCylinder(0, 1/2*settings.model.geometry.radius_breast, 0, 0, 1/2*settings.model.geometry.radius_breast-0.005,
                       0, settings.model.geometry.radius_nipple, tag=4)
+    build.addSphere(0, settings.model.geometry.radius_breast-0.005, 0, settings.model.geometry.radius_nipple, tag=6)
+
     # Fuse duct/nipple with glandular tissue
     build.fuse([(3, 3)], [(3, 4), (3,6)], tag=5)
     # Separate glandular from adipose tissue
