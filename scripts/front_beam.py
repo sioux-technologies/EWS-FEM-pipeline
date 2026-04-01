@@ -1,9 +1,7 @@
 from limols import LimolsSettings, LimolsSolver
-import copy
 from pathlib import Path
 import numpy as np
 import pyvista as pv
-from pyvista import raise_has_duplicates
 import logging
 logger = logging.getLogger(__name__)
 
@@ -27,6 +25,7 @@ def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid):
 
 def generate_projection_points(skin_segmented: pv.PolyData, dist_points=0.01):
     intercepts = []
+    breast_mask = []
     points = np.empty((0, 2))
     bounds = np.array(skin_segmented.bounds)
     n = int(np.floor(np.max(np.abs(bounds)) / dist_points))
@@ -39,7 +38,13 @@ def generate_projection_points(skin_segmented: pv.PolyData, dist_points=0.01):
             if len(projection_point) > 0:
                 intercepts.append(projection_point)
                 points = np.append(points, np.array([x, z]).reshape(1, -1), axis=0)
-    return points, intercepts
+                # breast_mask.append(True)
+            else:
+                # intercepts.append([x, -1, z])
+                # breast_mask.append(False)
+                pass
+    # points = np.concatenate((points, np.array(breast_mask).reshape(-1, 1)), axis=1)
+    return points, intercepts, breast_mask
 
 def project_front(surface: pv.PolyData | Path, points: np.ndarray):
     intercepts = []
@@ -48,7 +53,8 @@ def project_front(surface: pv.PolyData | Path, points: np.ndarray):
         if len(projection_point) > 0:
             intercepts.append(projection_point)
         else:
-            intercepts.append([np.nan, np.nan, np.nan])
+            intercepts.append([point[0], -1, point[1]])
+            pass
     return intercepts
 
 def write_settings(params: np.ndarray, folder, title):
@@ -108,22 +114,27 @@ def center_breast(skin: pv.PolyData | pv.UnstructuredGrid, nipple_coord: tuple =
         skin.translate(-1 * nipple_coord[0], inplace=True)
     else:
         skin.translate(-1*nipple_coord, inplace=True)
-    test_sphere = pv.Sphere(radius=0.02, center=(0, 0, 0))
-    nipple_area = skin.select_interior_points(test_sphere, inside_out=False)
-    nipple_area = nipple_area.threshold(0.5)
-    nipple_area = nipple_area.extract_surface(algorithm=None)
-    nipple_normal = np.average(nipple_area.compute_normals()['Normals'], axis=0)
-    nipple_normal = nipple_normal / np.linalg.norm(nipple_normal)
+    nipple_normal = find_area_normal(skin, radius = 0.02, center=(0,0,0))
     rot_axis = np.cross(nipple_normal, (0, 1, 0))
     rot_axis = rot_axis / np.linalg.norm(rot_axis)
     rot_angle = np.degrees(np.arccos(np.dot(nipple_normal, (0, 1, 0))))
     skin.rotate_vector(vector=rot_axis, angle=rot_angle, inplace=True)
 
 
+def find_area_normal(skin: pv.PolyData | pv.UnstructuredGrid, radius: float, center: tuple = (0, 0, 0)) -> np.ndarray:
+    search_volume = pv.Sphere(radius=radius, center=center)
+    search_area = skin.select_interior_points(search_volume, inside_out=False)
+    search_area = search_area.threshold(0.5)
+    search_area = search_area.extract_surface(algorithm=None)
+    nipple_normal = np.average(search_area.compute_normals()['Normals'], axis=0)
+    nipple_normal = nipple_normal / np.linalg.norm(nipple_normal)
+    return nipple_normal
+
+
 if __name__ == "__main__":
     ### Prepare input data
     # Import target surface and determine center (nipple)
-    filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3032_01_lr.frame_001.obj")
+    filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3031_01_lr.frame_001.obj")
     skin = load_obj_file(filepath, scale = 0.2, switch_axes=True) #data is not to scale, hence the 0.2 (guesstimated)
 
     # Translate such that the nipple is at the origin
@@ -131,61 +142,39 @@ if __name__ == "__main__":
 
     # Segment the breast and get projection points
     skin_segmented = extract_breast(skin)
-    points, projected_real = generate_projection_points(skin_segmented)
+    points, projected_real, breast_mask = generate_projection_points(skin_segmented)
 
     # Prepare settings and output files
     folder = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization")
     title = filepath.stem
 
     # first guess for radius and write settings
-    bounds = np.array(skin.bounds)
+    bounds = np.array(skin_segmented.bounds)
     guess_radius_breast = float(1/2*np.abs((bounds[0] - bounds[1])))
-    params = np.array([guess_radius_breast, 0, 0, 0, 0])
+    if guess_radius_breast > 0.15:
+        guess_radius_breast = 0.15
+    params = np.array([guess_radius_breast, 0.1, 0, 0, 22.5])
 
     ### Run model simulations
-    settings_limols = LimolsSettings(x0=params, n_residuals=len(points), scale = np.array([0.1, 0.1, 0.1, 0.1, 40]),
-                                     xu=np.array([0.15, 1, 1, 1, 45]), xl = np.array([0, -1, -1, -1, 0]))
+    settings_limols = LimolsSettings(x0=params, n_residuals=len(points), scale = np.array([0.15, 1, 1, 0.4, 45]),
+                                     xu=np.array([0.15, 0.5, 0.5, 0.2, 45]), xl = np.array([0, -0.5, -0.5, -0.2, -45]),
+                                     maxfev = 20)
     solver = LimolsSolver(settings_limols)
 
     parameter, expected_residual, step_size = solver.get_initial_step()
     #1st step
     residual = breast_model(parameter, projected_real, points, folder, title)
     parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
-    #2nd step
+    #2nd to last step
     while not solver.done:
         residual = breast_model(parameter, projected_real, points, folder, title)
         parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
-    # # Generate mesh, run, and generate displaced mesh .obj file
-    # mesh_files = generate.callback([filepath_out_toml])
-    # feb_files = fem.callback(mesh_files, jobs=0)
-    # obj_files = feb_to_3d(feb_files[0])
-    #
-    # # Load resulting mesh
-    # surface = load_obj_file(obj_files, switch_axes=False)
-    # # Translate to have nipple at (0,0,0)
-    # surface.translate(-1*surface.points[np.argmax(surface.points[:,1])], inplace=True)
-    # #Project projection points on model mesh
-    # surface= surface.extract_surface(algorithm=None)
-    # projected_model = project_front(surface, points)
-    #
-    # #Load both clouds into open3d
-    # pcd_model = o3d.geometry.PointCloud()
-    # pcd_model.points = o3d.utility.Vector3dVector(np.array(projected_model))
-    # pcd_target = o3d.geometry.PointCloud()
-    # pcd_target.points = o3d.utility.Vector3dVector(np.array(projected_real))
-    #
-    # # compute initial RMSE and transformation
-    # correspondence = o3d.utility.Vector2iVector(np.repeat(np.where(np.sum(projected_real, axis=1) != np.nan), 2).reshape(-1, 2))
-    # estimator = o3d.pipelines.registration.TransformationEstimationPointToPoint()
-    # print(estimator.compute_rmse(pcd_target, pcd_model, correspondence))
-    # transformation = estimator.compute_transformation(pcd_model, pcd_target, correspondence)
-    #
-    # # Copy model cloud and transform
-    # pcd_model_trans = copy.deepcopy(pcd_model).transform(transformation)
-    # print(estimator.compute_rmse(pcd_target, pcd_model_trans, correspondence))
-    #
-    # # show aligned pointclouds
-    # pcd_model.paint_uniform_color([1, 0.706, 0]) #yellow
-    # pcd_target.paint_uniform_color([0, 0.651, 0.929]) #blue
-    # o3d.visualization.draw_geometries([pcd_target, pcd_model])
-    # print(np.sum(np.square(np.array(pcd_target.points) - np.array(pcd_model.points)), axis=1))
+
+    model_skin_final = (load_obj_file((Path(folder) / 'output' /title).with_suffix('.obj')))
+    center_breast(model_skin_final, nipple_coord = model_skin_final.points[np.argmax(model_skin_final.points[:, 1])])
+    plotter = pv.Plotter()
+    plotter.add_axes()
+    plotter.view_xz()
+    plotter.add_mesh(model_skin_final, opacity = 0.8, color='yellow')
+    plotter.add_mesh(skin_segmented, opacity = 0.8, color='blue')
+    plotter.show()
