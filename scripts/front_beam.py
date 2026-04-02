@@ -23,28 +23,20 @@ def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid):
     skin_segmented = skin_segmented.extract_surface(algorithm=None)
     return skin_segmented
 
-def generate_projection_points(skin_segmented: pv.PolyData, dist_points=0.01):
-    intercepts = []
-    breast_mask = []
+def generate_projection_points(model_skin: pv.PolyData, n_points=10, n_slices = 10):
     points = np.empty((0, 2))
-    bounds = np.array(skin_segmented.bounds)
-    n = int(np.floor(np.max(np.abs(bounds)) / dist_points))
-    for ring in range(n):
-        m = int(np.floor(2*np.pi*ring))
-        for theta in np.linspace(0, 2 * np.pi, m, endpoint=False):
-            x = ring * dist_points * np.sin(theta)
-            z = ring * dist_points * np.cos(theta)
-            projection_point = skin_segmented.ray_trace([x, 1, z], [x, -1, z], first_point=True)[0]
-            if len(projection_point) > 0:
-                intercepts.append(projection_point)
-                points = np.append(points, np.array([x, z]).reshape(1, -1), axis=0)
-                # breast_mask.append(True)
-            else:
-                # intercepts.append([x, -1, z])
-                # breast_mask.append(False)
-                pass
-    # points = np.concatenate((points, np.array(breast_mask).reshape(-1, 1)), axis=1)
-    return points, intercepts, breast_mask
+    for phi in np.linspace(-1 / 2 * np.pi, 1 / 2 * np.pi, n_slices, endpoint=False):
+        plane = pv.Plane(center=(0, 0, 0), direction=(np.cos(phi), 0, np.sin(phi)), i_size=0.5,
+                         j_size=0.5).triangulate()
+        intsect, _, _ = plane.intersection(model_skin)
+
+        ends = intsect.points[[np.argmax(intsect.points[:, 2]), np.argmin(intsect.points[:, 2])]]
+        lens = np.sqrt(ends[:, 0] ** 2 + ends[:, 2] ** 2)
+        ws = np.concatenate((np.linspace(0.01, lens[0], n_points, endpoint=False),
+                             -1 * np.linspace(0.01, lens[1], n_points, endpoint=False)))
+        points = np.append(points, np.outer(ws, np.array([np.sin(phi), np.cos(phi)])), axis=0)
+
+    return points
 
 def project_front(surface: pv.PolyData | Path, points: np.ndarray):
     intercepts = []
@@ -53,11 +45,13 @@ def project_front(surface: pv.PolyData | Path, points: np.ndarray):
         if len(projection_point) > 0:
             intercepts.append(projection_point)
         else:
-            intercepts.append([point[0], -1, point[1]])
+            # intercepts.append([point[0], -1, point[1]])
+            intercepts.append([point[0], np.nan, point[1]])
             pass
-    return intercepts
+    return np.array(intercepts)
 
 def write_settings(params: np.ndarray, folder, title):
+    params = np.array([params[0], 0, 0, 0, params[1], params[2]])
     settings = Settings()
     #set fixed settings for this problem
     settings.model.geometry.radius_nipple = float(0.0075)
@@ -69,11 +63,13 @@ def write_settings(params: np.ndarray, folder, title):
     settings.model.geometry.asym_p2 = float(params[2])
     settings.model.geometry.asym_p3 = float(params[3])
     settings.model.geometry.angle_nipple = float(params[4])
+    settings.material.adipose.coef1 = float(params[5])
+    settings.material.adipose.coef2 = float(params[5])
     filepath_out_toml = (Path(folder) / title).with_suffix('.toml')
     write_settings_to_toml(filepath=filepath_out_toml, settings=settings)
     return filepath_out_toml
 
-def breast_model(params, projected_real, points, folder, title):
+def breast_model(params, skin, n_points, n_slices, folder, title):
     # Write parameters to settings file
     filepath_out_toml = write_settings(params, folder, title)
 
@@ -87,21 +83,20 @@ def breast_model(params, projected_real, points, folder, title):
     center_breast(surface, nipple_coord = surface.points[np.argmax(surface.points[:, 1])])
     #Project projection points on model mesh
     surface= surface.extract_surface(algorithm=None)
-    projected_model = project_front(surface, points)
+    projection_points = generate_projection_points(surface, n_points, n_slices)
+    projected_model = project_front(surface, projection_points)
 
     #Load both clouds into open3d
     pcd_model = o3d.geometry.PointCloud()
     pcd_model.points = o3d.utility.Vector3dVector(np.array(projected_model))
     pcd_target = o3d.geometry.PointCloud()
-    pcd_target.points = o3d.utility.Vector3dVector(np.array(projected_real))
+    pcd_target.points = o3d.utility.Vector3dVector(np.array(skin.points))
 
     # compute transformation and SE
-    correspondence = o3d.utility.Vector2iVector(np.repeat(np.where(np.sum(projected_real, axis=1) != np.nan), 2)
-                                                .reshape(-1, 2))
-    estimator = o3d.pipelines.registration.TransformationEstimationPointToPoint()
-    transformation = estimator.compute_transformation(pcd_model, pcd_target, correspondence)
-    pcd_model.transform(transformation)
-    sq_err = np.sum(np.square(np.array(pcd_target.points) - np.array(pcd_model.points)), axis=1)
+    reg_p2p = o3d.pipelines.registration.registration_icp(pcd_model, pcd_target, 0.05)
+    pcd_model.transform(reg_p2p.transformation)
+    correspondence = np.array(reg_p2p.correspondence_set)
+    sq_err = np.sum(np.square(np.array(pcd_model.points)[correspondence[:, 0]] - np.array(pcd_target.points)[correspondence[:, 1]]), axis=1)
     return sq_err
 
     # return residuals
@@ -134,40 +129,41 @@ def find_area_normal(skin: pv.PolyData | pv.UnstructuredGrid, radius: float, cen
 if __name__ == "__main__":
     ### Prepare input data
     # Import target surface and determine center (nipple)
-    filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3031_01_lr.frame_001.obj")
+    filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3032_01_lr.frame_001.obj")
     skin = load_obj_file(filepath, scale = 0.2, switch_axes=True) #data is not to scale, hence the 0.2 (guesstimated)
-
+    n_points = 10
+    n_slices = 10
     # Translate such that the nipple is at the origin
     center_breast(skin)
 
     # Segment the breast and get projection points
     skin_segmented = extract_breast(skin)
-    points, projected_real, breast_mask = generate_projection_points(skin_segmented)
+
 
     # Prepare settings and output files
     folder = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization")
     title = filepath.stem
 
     # first guess for radius and write settings
-    bounds = np.array(skin_segmented.bounds)
-    guess_radius_breast = float(1/2*np.abs((bounds[0] - bounds[1])))
-    if guess_radius_breast > 0.15:
-        guess_radius_breast = 0.15
-    params = np.array([guess_radius_breast, 0.1, 0, 0, 22.5])
+    # bounds = np.array(skin_segmented.bounds)
+    # guess_radius_breast = float(1/4*np.abs((bounds[0] - bounds[1])))
+    # if guess_radius_breast > 0.15:
+    #     guess_radius_breast = 0.15
+    params_0 = np.array([0.07, 22.5, 50])
 
     ### Run model simulations
-    settings_limols = LimolsSettings(x0=params, n_residuals=len(points), scale = np.array([0.15, 1, 1, 0.4, 45]),
-                                     xu=np.array([0.15, 0.5, 0.5, 0.2, 45]), xl = np.array([0, -0.5, -0.5, -0.2, -45]),
+    settings_limols = LimolsSettings(x0=params_0, n_residuals=n_points*n_slices*2, scale = np.array([0.15, 45, 150]),
+                                     xu=np.array([0.15,  45, 200]), xl = np.array([0, -45, 20]),
                                      maxfev = 20)
     solver = LimolsSolver(settings_limols)
 
     parameter, expected_residual, step_size = solver.get_initial_step()
     #1st step
-    residual = breast_model(parameter, projected_real, points, folder, title)
+    residual = breast_model(parameter, skin_segmented, n_points, n_slices, folder, title)
     parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
-    #2nd to last step
+    # 2nd to last step
     while not solver.done:
-        residual = breast_model(parameter, projected_real, points, folder, title)
+        residual = breast_model(parameter, skin_segmented, n_points, n_slices, folder, title)
         parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
 
     model_skin_final = (load_obj_file((Path(folder) / 'output' /title).with_suffix('.obj')))
