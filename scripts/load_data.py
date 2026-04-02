@@ -34,7 +34,7 @@ def point_clicker(skin: pv.PolyData | pv.UnstructuredGrid, message : str = "", r
     if not rotation:
         pl.enable_custom_trackball_style(left = 'pan', right = 'pan', control_left='pan', control_right='pan')
     pl.add_mesh(skin)
-    pl.enable_point_picking(callback=point_selector, picker = 'point',
+    pl.enable_point_picking(callback=point_selector, picker = 'hardware',
                                     show_message=message + 'press enter to confirm, press Q when done.',
                                     left_clicking=True)
     pl.add_key_event('Return', wrapped_point_saver)
