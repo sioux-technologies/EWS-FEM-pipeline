@@ -94,7 +94,7 @@ def breast_model(params, skin, n_points, n_slices, folder, title):
 
     # compute transformation and SE
     reg_p2p = o3d.pipelines.registration.registration_icp(pcd_model, pcd_target, 0.05)
-    pcd_model.transform(reg_p2p.transformation)
+    # pcd_model.transform(reg_p2p.transformation)
     correspondence = np.array(reg_p2p.correspondence_set)
     sq_err = np.sum(np.square(np.array(pcd_model.points)[correspondence[:, 0]] - np.array(pcd_target.points)[correspondence[:, 1]]), axis=1)
     return sq_err
@@ -110,6 +110,8 @@ def center_breast(skin: pv.PolyData | pv.UnstructuredGrid, nipple_coord: tuple =
     else:
         skin.translate(-1*nipple_coord, inplace=True)
     nipple_normal = find_area_normal(skin, radius = 0.02, center=(0,0,0))
+    nipple_normal[2] = 0
+    nipple_normal = nipple_normal/np.linalg.norm(nipple_normal)
     rot_axis = np.cross(nipple_normal, (0, 1, 0))
     rot_axis = rot_axis / np.linalg.norm(rot_axis)
     rot_angle = np.degrees(np.arccos(np.dot(nipple_normal, (0, 1, 0))))
@@ -149,12 +151,12 @@ if __name__ == "__main__":
     # guess_radius_breast = float(1/4*np.abs((bounds[0] - bounds[1])))
     # if guess_radius_breast > 0.15:
     #     guess_radius_breast = 0.15
-    params_0 = np.array([0.07, 22.5, 50])
+    params_0 = np.array([0.07, 22.5, 25])
 
     ### Run model simulations
-    settings_limols = LimolsSettings(x0=params_0, n_residuals=n_points*n_slices*2, scale = np.array([0.15, 45, 150]),
-                                     xu=np.array([0.15,  45, 200]), xl = np.array([0, -45, 20]),
-                                     maxfev = 20)
+    settings_limols = LimolsSettings(x0=params_0, n_residuals=n_points*n_slices*2, scale = np.array([0.15, 45, 200]),
+                                     xu=np.array([0.15,  45, 200]), xl = np.array([0, -45, 0]),
+                                     maxfev = 150)
     solver = LimolsSolver(settings_limols)
 
     parameter, expected_residual, step_size = solver.get_initial_step()
