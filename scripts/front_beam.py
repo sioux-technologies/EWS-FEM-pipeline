@@ -32,9 +32,9 @@ def generate_projection_points(model_skin: pv.PolyData, n_points=10, n_slices = 
 
         ends = intsect.points[[np.argmax(intsect.points[:, 2]), np.argmin(intsect.points[:, 2])]]
         lens = np.sqrt(ends[:, 0] ** 2 + ends[:, 2] ** 2)
-        ws = np.concatenate((np.linspace(0.01, lens[0], n_points, endpoint=False),
-                             -1 * np.linspace(0.01, lens[1], n_points, endpoint=False)))
-        points = np.append(points, np.outer(ws, np.array([np.sin(phi), np.cos(phi)])), axis=0)
+        ws = np.concatenate((np.linspace(0.01, lens[1], n_points, endpoint=False),
+                             -1 * np.linspace(0.01, lens[0], n_points, endpoint=False)))
+        points = np.append(points, np.outer(ws, np.array([np.sin(phi), -1*np.cos(phi)])), axis=0)
 
     return points
 
@@ -45,13 +45,11 @@ def project_front(surface: pv.PolyData | Path, points: np.ndarray):
         if len(projection_point) > 0:
             intercepts.append(projection_point)
         else:
-            # intercepts.append([point[0], -1, point[1]])
             intercepts.append([point[0], np.nan, point[1]])
             pass
     return np.array(intercepts)
 
 def write_settings(params: np.ndarray, folder, title):
-    params = np.array([params[0], 0, 0, 0, params[1], params[2]])
     settings = Settings()
     #set fixed settings for this problem
     settings.model.geometry.radius_nipple = float(0.0075)
@@ -63,8 +61,6 @@ def write_settings(params: np.ndarray, folder, title):
     settings.model.geometry.asym_p2 = float(params[2])
     settings.model.geometry.asym_p3 = float(params[3])
     settings.model.geometry.angle_nipple = float(params[4])
-    settings.material.adipose.coef1 = float(params[5])
-    settings.material.adipose.coef2 = float(params[5])
     filepath_out_toml = (Path(folder) / title).with_suffix('.toml')
     write_settings_to_toml(filepath=filepath_out_toml, settings=settings)
     return filepath_out_toml
@@ -93,8 +89,9 @@ def breast_model(params, skin, n_points, n_slices, folder, title):
     pcd_target.points = o3d.utility.Vector3dVector(np.array(skin.points))
 
     # compute transformation and SE
-    reg_p2p = o3d.pipelines.registration.registration_icp(pcd_model, pcd_target, 0.05)
-    # pcd_model.transform(reg_p2p.transformation)
+    reg_p2p = o3d.pipelines.registration.registration_icp(pcd_model, pcd_target, 0.1)
+    pcd_model.transform(reg_p2p.transformation)
+    # dists = pcd_model.compute_cloud_distance(pcd_target)
     correspondence = np.array(reg_p2p.correspondence_set)
     sq_err = np.sum(np.square(np.array(pcd_model.points)[correspondence[:, 0]] - np.array(pcd_target.points)[correspondence[:, 1]]), axis=1)
     return sq_err
@@ -151,11 +148,11 @@ if __name__ == "__main__":
     # guess_radius_breast = float(1/4*np.abs((bounds[0] - bounds[1])))
     # if guess_radius_breast > 0.15:
     #     guess_radius_breast = 0.15
-    params_0 = np.array([0.07, 22.5, 25])
+    params_0 = np.array([0.07, 0, 0, 0, 22.5])
 
     ### Run model simulations
-    settings_limols = LimolsSettings(x0=params_0, n_residuals=n_points*n_slices*2, scale = np.array([0.15, 45, 200]),
-                                     xu=np.array([0.15,  45, 200]), xl = np.array([0, -45, 0]),
+    settings_limols = LimolsSettings(x0=params_0, n_residuals=n_points*n_slices*2, scale = np.array([0.15, 0.5, 0.1, 0.1, 90]),
+                                     xu=np.array([0.15, 1, 1, 1, 45]), xl = np.array([0,-1, -1, -1, 0]),
                                      maxfev = 150)
     solver = LimolsSolver(settings_limols)
 
