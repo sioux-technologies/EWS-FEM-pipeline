@@ -157,8 +157,6 @@ class HGOProperties(ExtendedBaseModel):
     gamma: Annotated[float, FEBField("gamma")]
     kappa: Annotated[float, FEBField("kappa")]
     c: Annotated[float, FEBField("c")]
-    fiber_dir_a: Annotated[str, FEBField("a")]
-    fiber_dir_d: Annotated[str, FEBField("d")]
 
     def to_xml(self, parent, breast_radius: float):
         info = self.model_fields["bulk_modulus"].metadata[0]
