@@ -96,7 +96,7 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     # Fragment full model. Ensures no surfaces and volumes overlap. Note: replaces all tags!
     build.fragment(all_volumes, all_surfaces)
 
-    assign_tissues(build, mesh_parts)
+    assign_tissues(build, mesh_parts, settings)
 
     # Remove lingering elements
     build.remove(build.getEntities(dim=2))
@@ -107,7 +107,7 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     build.synchronize()
 
 
-def assign_tissues(build, mesh_parts: MeshParts):
+def assign_tissues(build, mesh_parts: MeshParts, settings: Settings):
     # Alias for tissues. Only includes tissues, no nodes
     tissues = mesh_parts.tissue_parts
 
@@ -117,6 +117,10 @@ def assign_tissues(build, mesh_parts: MeshParts):
     glandular = all_final_volumes[1][1]
     tissues.adipose.tags = [adipose]
     tissues.glandular.tags = [glandular]
+    if settings.material.tumor.tumorous:
+        tissues.tumor.tags = [all_final_volumes[2][1]]
+    else:
+        tissues.tumor.tags = []
 
     # Surface tags for skin and chest
     adipose_surfs = build.getSurfaceLoops(adipose)[1][0]
