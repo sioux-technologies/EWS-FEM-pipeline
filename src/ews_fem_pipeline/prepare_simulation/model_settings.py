@@ -13,9 +13,9 @@ class GeometrySettings(BaseModel):
     - asym_p1: float                                    Shape of the breast base is defined by variable radius
     - asym_p2: float                                    r = radius_breast(1+p1*cos(theta)+p2*cos(2*theta)
     - asym_p3: float                                                            + p3*cos(3*theta))
-    - radius_nipple: [m > 0.0035]                       Set the radius of the nipple and duct , modeled as a cylinder
+    - radius_nipple: [m > 0.0075]                       Set the radius of the nipple and duct, modeled as a cylinder
                                                         extending from the main glandular tissue of the breast.
-    - thickness_chest_wall: float [m > 0]               Sets the thickness of the disk attached to the chest wall. The disk
+    - thickness_chest_wall: float [m > 0.005]           Sets the thickness of the disk attached to the chest wall. The disk
                                                         is subjected to the boundary conditions of the parabolic jump.
     - scaling_factor_glandular: float [0 < f < 1]       Set the ratio of radius of breast : radius of glandular tissue
                                                         in all three dimensions.
@@ -24,8 +24,8 @@ class GeometrySettings(BaseModel):
     """
 
     radius_breast: float = 0.07
-    thickness_chest_wall: float = 0.002
-    radius_nipple: float = 0.005
+    thickness_chest_wall: float = 0.005
+    radius_nipple: float = 0.0075
     scaling_factor_glandular_y: float = 0.9
     scaling_factor_glandular_xz: float = 0.8
     angle_nipple: float = 30
