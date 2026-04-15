@@ -69,8 +69,8 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
                  settings.model.geometry.scaling_factor_glandular_xz, settings.model.geometry.scaling_factor_glandular_y,
                  settings.model.geometry.scaling_factor_glandular_xz)
 
-    if settings.model.geometry.thickness_chest_wall > 0.006:
-        thickness_layer1 = 0.035
+    if settings.model.geometry.thickness_chest_wall > 0.004:
+        thickness_layer1 = 0.002
     else:
         thickness_layer1 = settings.model.geometry.thickness_chest_wall
 
@@ -112,12 +112,12 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     build.remove(build.getEntities(dim=1))
     build.remove(build.getEntities(dim=0))
 
-    assign_tissues(build, mesh_parts.tissue_parts)
+    assign_tissues(build, mesh_parts.tissue_parts, settings)
     # Synchronize the geometry before assigning meshing
     build.synchronize()
 
 
-def assign_tissues(build, tissues: TissueParts):
+def assign_tissues(build, tissues: TissueParts, settings: Settings):
     # Construct and assign surfaces and volumes for different tissues ###
     all_final_volumes = build.getEntities(dim=3)
     adipose = [all_final_volumes[0][1], all_final_volumes[1][1]]
@@ -130,8 +130,12 @@ def assign_tissues(build, tissues: TissueParts):
     glandular_surfs = list(build.getSurfaceLoops(glandular[0])[1][0])
     all_surfs, counts = np.unique(adipose_surfs+glandular_surfs, return_counts = True)
     outer_surfaces = all_surfs[counts == 1]
-    tissues.skin.tags = [outer_surfaces[0]]
-    tissues.chest.tags = [outer_surfaces[1]]
+    if settings.model.geometry.thickness_chest_wall > 0.004:
+        tissues.skin.tags = [outer_surfaces[1]]
+        tissues.chest.tags = [outer_surfaces[0]]
+    else:
+        tissues.skin.tags = [outer_surfaces[0]]
+        tissues.chest.tags = [outer_surfaces[1]]
 
 
 def construct_bspline_points(build, settings: Settings, n_points_u: int, n_points_v: int) -> np.ndarray[Any, np.dtype[np.int_]]:
@@ -167,24 +171,13 @@ def build_mesh(mesh, tissues: TissueParts, settings: Settings):
     ####################
     # Generate 3D mesh #
     ####################
-    #
-    # # Assign global mesh density by scaling mesh with length of mesh curves
-    # curve_list = gmsh.model.occ.getEntities(dim=1)
-    # for curve in curve_list:
-    #     length_curve = gmsh.model.occ.getMass(dim=1, tag=curve[1])
-    #     mesh.setTransfiniteCurve(curve[1], int(settings.model.mesh.density * length_curve))
+    zbound = -gmsh.model.getBoundingBox(2, tissues.skin.tags[0])[2]
+    size_max = settings.model.mesh.ls
 
-    mesh.field.add('Distance', 1)
-    mesh.field.setNumbers(1, 'CurvesList', [15])
-    mesh.field.setNumber(1, 'Sampling', 50)
-    mesh.field.add("Threshold", 2)
-    mesh.field.setNumber(2, 'InField', 1)
-    mesh.field.setNumber(2, 'SizeMin', 0.002)
-    mesh.field.setNumber(2, 'SizeMax', settings.model.mesh.ls)
-    mesh.field.setNumber(2, 'DistMin', 0.01)
-    mesh.field.setNumber(2, 'DistMax', 0.03)
-
-    gmsh.model.mesh.field.setAsBackgroundMesh(2)
+    gmsh.model.mesh.field.add("MathEval", 3)
+    gmsh.model.mesh.field.setString(3, "F",
+                                    f"({size_max}-0.002)*(Cos(z/{zbound}*1/2*Pi))+0.0025")
+    gmsh.model.mesh.field.setAsBackgroundMesh(3)
 
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 0)
