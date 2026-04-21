@@ -132,6 +132,7 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     build.remove(build.getEntities(dim=1))
     build.remove(build.getEntities(dim=0))
 
+
     # Fragment full model. Ensures no surfaces and volumes overlap. Note: replaces all tags!
     all_surfaces = build.getEntities(dim=2)
     all_volumes = build.getEntities(dim=3)
