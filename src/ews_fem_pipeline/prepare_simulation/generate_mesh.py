@@ -94,31 +94,8 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
         build.translate([(3, 2)], 0, settings.model.geometry.thickness_chest_wall - thickness_layer1, 0)
     build.cut([(3, 3)], [(3, 2)], removeTool=True)
 
-    # Define curves of surfaces of chest wall (surftag 11) and new mid-layer (surftag 15)
-    curve1 = build.getCurveLoops(11)[1][0][0]
-    curve2 = build.getCurveLoops(15)[1][0][0]
-
-    # Split the base curves in two to create the connection between the base surfaces in two parts
-    plane = build.addRectangle(-0.2, -0.2, 0, 0.2, 0.4, tag = 0)
-    fragmented = build.fragment([(1, curve1), (1, curve2)], [(2, plane)], removeObject = False, removeTool=True)
-    build.remove([(2, 0)], recursive=True)
-
-    # Add two lines connecting the two surfaces
-    sideline1 = build.addLine(149, 146)
-    sideline2 = build.addLine(152, 153)
-
-    # Define both halves of the connecting surface
-    curveloop1 = build.addCurveLoop([fragmented[1][0][0][1], sideline1, fragmented[1][1][0][1], sideline2])
-    curveloop2 = build.addCurveLoop([fragmented[1][0][1][1], sideline1, fragmented[1][1][1][1], sideline2])
-    sidesurf1 = build.addBSplineFilling(curveloop1)
-    sidesurf2 = build.addBSplineFilling(curveloop2)
-    curve2_split = build.addWire([fragmented[1][1][0][1], fragmented[1][1][1][1]])
-    surf2 = build.addTrimmedSurface(15, [curve2_split], wire3D = True)
-    build.fuse([(2, sidesurf1), (2, sidesurf2), (2, 11)], [(2, surf2)])
-    build.addVolume([build.addSurfaceLoop([sidesurf1, sidesurf2, 11, surf2], sewing=False)], tag=4)
-
-
-    build.cut([(3, 1)], [(3, 4)], removeTool=False)
+    # Build the mid-layer volume
+    build_meshlayer(build)
 
     # Add duct and nipple as a cylinder
     build.addCylinder(0, settings.model.geometry.radius_breast - 0.04, 0, 0, 0.035,
@@ -146,28 +123,6 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     assign_tissues(build, mesh_parts.tissue_parts, settings)
     # Synchronize the geometry before assigning meshing
     build.synchronize()
-
-
-def assign_tissues(build, tissues: TissueParts, settings: Settings):
-    # Construct and assign surfaces and volumes for different tissues ###
-    all_final_volumes = build.getEntities(dim=3)
-    adipose = [all_final_volumes[0][1], all_final_volumes[1][1]]
-    glandular = [all_final_volumes[2][1]]
-    tissues.adipose.tags = adipose
-    tissues.glandular.tags = glandular
-
-    # Surface tags for skin and chest
-    adipose_surfs = list(np.concatenate((build.getSurfaceLoops(adipose[0])[1][0], build.getSurfaceLoops(adipose[1])[1][0])))
-    glandular_surfs = list(build.getSurfaceLoops(glandular[0])[1][0])
-    all_surfs, counts = np.unique(adipose_surfs+glandular_surfs, return_counts = True)
-    outer_surfaces = all_surfs[counts == 1]
-    if settings.model.geometry.thickness_chest_wall > 0.004:
-        tissues.skin.tags = [outer_surfaces[1]]
-        tissues.chest.tags = [outer_surfaces[0]]
-    else:
-        tissues.skin.tags = [outer_surfaces[0]]
-        tissues.chest.tags = [outer_surfaces[1]]
-
 
 def construct_bspline_points(build, settings: Settings, n_points_u: int, n_points_v: int) -> np.ndarray[Any, np.dtype[np.int_]]:
     # Points for the breast surface are generated on circle arcs with variable radius to create asymmetry
@@ -197,6 +152,56 @@ def construct_bspline_points(build, settings: Settings, n_points_u: int, n_point
                                             axis=0)
 
     return surface_control_points
+
+def build_meshlayer(build):
+    # Define curves of surfaces of chest wall (surftag 11) and new mid-layer (surftag 15)
+    curve1 = build.getCurveLoops(11)[1][0][0]
+    curve2 = build.getCurveLoops(15)[1][0][0]
+
+    # Split the base curves in two to create the connection between the base surfaces in two parts
+    plane = build.addRectangle(-0.2, -0.2, 0, 0.2, 0.4, tag=0)
+    fragmented = build.fragment([(1, curve1), (1, curve2)], [(2, plane)], removeObject=False, removeTool=True)
+    build.remove([(2, 0)], recursive=True)
+
+    # Add two lines connecting the two surfaces
+    sideline1 = build.addLine(149, 146)
+    sideline2 = build.addLine(152, 153)
+
+    # Define both halves of the connecting surface
+    curveloop1 = build.addCurveLoop([fragmented[1][0][0][1], sideline1, fragmented[1][1][0][1], sideline2])
+    curveloop2 = build.addCurveLoop([fragmented[1][0][1][1], sideline1, fragmented[1][1][1][1], sideline2])
+    sidesurf1 = build.addBSplineFilling(curveloop1)
+    sidesurf2 = build.addBSplineFilling(curveloop2)
+    connecting_curves = build.addWire([fragmented[1][1][0][1], fragmented[1][1][1][1]])
+    connecting_surf = build.addTrimmedSurface(15, [connecting_curves], wire3D=True)
+    build.fuse([(2, sidesurf1), (2, sidesurf2), (2, 11)],
+               [(2, connecting_surf)])  # does not change tags, does fix adjacency
+    # Add layer as new volume and separate from main adipose tissue
+    build.addVolume([build.addSurfaceLoop([sidesurf1, sidesurf2, 11, connecting_surf], sewing=False)], tag=4)
+    build.cut([(3, 1)], [(3, 4)], removeTool=False)
+
+
+def assign_tissues(build, tissues: TissueParts, settings: Settings):
+    # Construct and assign surfaces and volumes for different tissues ###
+    all_final_volumes = build.getEntities(dim=3)
+    adipose = [all_final_volumes[0][1], all_final_volumes[1][1]]
+    glandular = [all_final_volumes[2][1]]
+    tissues.adipose.tags = adipose
+    tissues.glandular.tags = glandular
+
+    # Surface tags for skin and chest
+    adipose_surfs = list(np.concatenate((build.getSurfaceLoops(adipose[0])[1][0], build.getSurfaceLoops(adipose[1])[1][0])))
+    glandular_surfs = list(build.getSurfaceLoops(glandular[0])[1][0])
+    all_surfs, counts = np.unique(adipose_surfs+glandular_surfs, return_counts = True)
+    outer_surfaces = all_surfs[counts == 1]
+    if settings.model.geometry.thickness_chest_wall > 0.004:
+        tissues.skin.tags = [outer_surfaces[1]]
+        tissues.chest.tags = [outer_surfaces[0]]
+    else:
+        tissues.skin.tags = [outer_surfaces[0]]
+        tissues.chest.tags = [outer_surfaces[1]]
+
+
 
 
 def build_mesh(mesh, tissues: TissueParts, settings: Settings):
