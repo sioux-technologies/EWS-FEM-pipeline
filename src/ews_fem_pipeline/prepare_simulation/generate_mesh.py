@@ -69,7 +69,7 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
                  settings.model.geometry.scaling_factor_glandular_xz, settings.model.geometry.scaling_factor_glandular_y,
                  settings.model.geometry.scaling_factor_glandular_xz)
 
-    # Cut a surface at distance  ~1 element from the chest, this is used later for meshing purposes
+    # Create a surface at distance  ~1 element from the chest, this is used later for meshing purposes
     # make sure the space between this layer and the glandular tissue is large enough
     if settings.model.geometry.thickness_chest_wall > 0.004:
         thickness_layer1 = 0.002
@@ -82,13 +82,17 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
 
     # Cut torso from breast shape
     build.cut([(3, 1)], [(3, 2)], removeTool=False)
-    build.intersect([(3,4)], [(2, 12)], removeObject = True, removeTool=False) #surfacetag = 15
+
+    # Get the mid-layer surface by intersection of the torso and the mid-volume
+    build.translate([(3, 2)], 0, thickness_layer1, 0)
+    build.intersect([(3,4)], [(2, 12)], removeObject = True, removeTool=False) #surftag = 15
 
     # Cut torso shape from glandular, forming an even layer of adipose tissue between chest and glandular
+    # Currently does not work for chest wall thickness < 0.004!!!
+    # Also remove the torso shape
     if thickness_layer1 != settings.model.geometry.thickness_chest_wall:
         build.translate([(3, 2)], 0, settings.model.geometry.thickness_chest_wall - thickness_layer1, 0)
-    build.cut([(3, 3)], [(3, 2)], removeTool=False)
-    build.translate([(3, 2)], 0, -settings.model.geometry.thickness_chest_wall, 0)
+    build.cut([(3, 3)], [(3, 2)], removeTool=True)
 
     # Define curves of surfaces of chest wall (surftag 11) and new mid-layer (surftag 15)
     curve1 = build.getCurveLoops(11)[1][0][0]
@@ -101,7 +105,7 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
 
     # Add two lines connecting the two surfaces
     sideline1 = build.addLine(149, 146)
-    sideline2 = build.addLine(154, 155)
+    sideline2 = build.addLine(152, 153)
 
     # Define both halves of the connecting surface
     curveloop1 = build.addCurveLoop([fragmented[1][0][0][1], sideline1, fragmented[1][1][0][1], sideline2])
