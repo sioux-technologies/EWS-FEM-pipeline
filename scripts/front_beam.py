@@ -26,16 +26,12 @@ def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid):
 def generate_projection_points(model_skin: pv.PolyData, n_points=10, n_slices = 10):
     points = np.empty((0, 2))
     for phi in np.linspace(-1 / 2 * np.pi, 1 / 2 * np.pi, n_slices, endpoint=False):
-        plane = pv.Plane(center=(0, 0, 0), direction=(np.cos(phi), 0, np.sin(phi)), i_size=0.5,
-                         j_size=0.5).triangulate()
-        intsect, _, _ = plane.intersection(model_skin)
-
+        intsect = model_skin.slice(origin=(0, 0, 0), normal=(np.cos(phi), 0, np.sin(phi)))
         ends = intsect.points[[np.argmax(intsect.points[:, 2]), np.argmin(intsect.points[:, 2])]]
         lens = np.sqrt(ends[:, 0] ** 2 + ends[:, 2] ** 2)
         ws = np.concatenate((np.linspace(0.01, lens[1], n_points, endpoint=False),
                              -1 * np.linspace(0.01, lens[0], n_points, endpoint=False)))
         points = np.append(points, np.outer(ws, np.array([np.sin(phi), -1*np.cos(phi)])), axis=0)
-
     return points
 
 def project_front(surface: pv.PolyData | Path, points: np.ndarray):
