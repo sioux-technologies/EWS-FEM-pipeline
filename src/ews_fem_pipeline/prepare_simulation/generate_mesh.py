@@ -57,72 +57,111 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     build.remove(build.getEntities(dim=0))
 
     # Build shape of torso
-    if settings.model.geometry.angle_nipple != 0:
-        build.addCylinder(0, -(1 / 2 * settings.model.geometry.radius_breast / np.sin(
-            1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), -0.2,
-                          0, 0, 0.4,
-                          (1 / 2 * settings.model.geometry.radius_breast / np.sin(
-                              1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), tag=2)
-    else:
-        build.addBox(-0.5, 0, -0.5, 1, -1, 1, tag = 2)
+    build.addCylinder(0, -(1 / 2 * settings.model.geometry.radius_breast / np.sin(
+        1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), -0.2,
+                      0, 0, 0.4,
+                      (1 / 2 * settings.model.geometry.radius_breast / np.sin(
+                          1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), tag=2) #curved surfacetag = 12
 
     # Build glandular tissue by copying and downscaling breast volume
     build.copy([(3, 1)])  # tag = 3
     build.dilate([(3, 3)], 0, 0, 0,
-                 settings.model.geometry.scaling_factor_glandular, settings.model.geometry.scaling_factor_glandular,
-                 settings.model.geometry.scaling_factor_glandular)
+                 settings.model.geometry.scaling_factor_glandular_xz, settings.model.geometry.scaling_factor_glandular_y,
+                 settings.model.geometry.scaling_factor_glandular_xz)
+
+    # Cut a surface at distance  ~1 element from the chest, this is used later for meshing purposes
+    # make sure the space between this layer and the glandular tissue is large enough
+    if settings.model.geometry.thickness_chest_wall > 0.004:
+        thickness_layer1 = 0.002
+    else:
+        thickness_layer1 = settings.model.geometry.thickness_chest_wall
+
+    scaling_layer = 1-(thickness_layer1/settings.model.geometry.radius_breast)
+    build.copy([(3, 1)])  # tag = 4
+    build.dilate([(3, 4)], 0, 0, 0, scaling_layer, scaling_layer, scaling_layer)
 
     # Cut torso from breast shape
     build.cut([(3, 1)], [(3, 2)], removeTool=False)
-    # Move and cut torso from glandular tissue to ensure a stable layer of adipose tissue on chest
-    build.translate([(3, 2)], 0, settings.model.geometry.thickness_chest_wall, 0)
-    build.cut([(3, 3)], [(3, 2)], removeTool=True)
+    build.intersect([(3,4)], [(2, 12)], removeObject = True, removeTool=False) #surfacetag = 15
+
+    # Cut torso shape from glandular, forming an even layer of adipose tissue between chest and glandular
+    if thickness_layer1 != settings.model.geometry.thickness_chest_wall:
+        build.translate([(3, 2)], 0, settings.model.geometry.thickness_chest_wall - thickness_layer1, 0)
+    build.cut([(3, 3)], [(3, 2)], removeTool=False)
+    build.translate([(3, 2)], 0, -settings.model.geometry.thickness_chest_wall, 0)
+
+    # Define curves of surfaces of chest wall (surftag 11) and new mid-layer (surftag 15)
+    curve1 = build.getCurveLoops(11)[1][0][0]
+    curve2 = build.getCurveLoops(15)[1][0][0]
+
+    # Split the base curves in two to create the connection between the base surfaces in two parts
+    plane = build.addRectangle(-0.2, -0.2, 0, 0.2, 0.4, tag = 0)
+    fragmented = build.fragment([(1, curve1), (1, curve2)], [(2, plane)], removeObject = False, removeTool=True)
+    build.remove([(2, 0)], recursive=True)
+
+    # Add two lines connecting the two surfaces
+    sideline1 = build.addLine(149, 146)
+    sideline2 = build.addLine(154, 155)
+
+    # Define both halves of the connecting surface
+    curveloop1 = build.addCurveLoop([fragmented[1][0][0][1], sideline1, fragmented[1][1][0][1], sideline2])
+    curveloop2 = build.addCurveLoop([fragmented[1][0][1][1], sideline1, fragmented[1][1][1][1], sideline2])
+    sidesurf1 = build.addBSplineFilling(curveloop1)
+    sidesurf2 = build.addBSplineFilling(curveloop2)
+    curve2_split = build.addWire([fragmented[1][1][0][1], fragmented[1][1][1][1]])
+    surf2 = build.addTrimmedSurface(15, [curve2_split], wire3D = True)
+    build.fuse([(2, sidesurf1), (2, sidesurf2), (2, 11)], [(2, surf2)])
+    build.addVolume([build.addSurfaceLoop([sidesurf1, sidesurf2, 11, surf2], sewing=False)], tag=4)
+
+
+    build.cut([(3, 1)], [(3, 4)], removeTool=False)
 
     # Add duct and nipple as a cylinder
-    build.addCylinder(0, 1/2*settings.model.geometry.radius_breast, 0, 0, 1/2*settings.model.geometry.radius_breast-0.005,
-                      0, settings.model.geometry.radius_nipple, tag=4)
-    build.addSphere(0, settings.model.geometry.radius_breast-0.005, 0, settings.model.geometry.radius_nipple, tag=6)
+    build.addCylinder(0, settings.model.geometry.radius_breast - 0.04, 0, 0, 0.035,
+                      0, settings.model.geometry.radius_nipple, tag=6)
+    build.addSphere(0, settings.model.geometry.radius_breast-0.005, 0, settings.model.geometry.radius_nipple, tag=7)
 
     # Fuse duct/nipple with glandular tissue
-    build.fuse([(3, 3)], [(3, 4), (3,6)], tag=5)
+    build.fuse([(3, 3)], [(3, 7), (3,6)], tag=8)
     # Separate glandular from adipose tissue
-    build.cut([(3, 1)], [(3, 5)], removeTool=False)
+    build.cut([(3, 1)], [(3, 8)], removeTool=False)
 
-    all_surfaces = build.getEntities(dim=2)
-    all_volumes = build.getEntities(dim=3)
-
-    # Fragment full model. Ensures no surfaces and volumes overlap. Note: replaces all tags!
-    build.fragment(all_volumes, all_surfaces)
-
-    assign_tissues(build, mesh_parts)
 
     # Remove lingering elements
     build.remove(build.getEntities(dim=2))
     build.remove(build.getEntities(dim=1))
     build.remove(build.getEntities(dim=0))
 
+    # Fragment full model. Ensures no surfaces and volumes overlap. Note: replaces all tags!
+    all_surfaces = build.getEntities(dim=2)
+    all_volumes = build.getEntities(dim=3)
+    build.fragment(all_volumes, all_surfaces)
+
+
+    assign_tissues(build, mesh_parts.tissue_parts, settings)
     # Synchronize the geometry before assigning meshing
     build.synchronize()
 
 
-def assign_tissues(build, mesh_parts: MeshParts):
-    # Alias for tissues. Only includes tissues, no nodes
-    tissues = mesh_parts.tissue_parts
-
+def assign_tissues(build, tissues: TissueParts, settings: Settings):
     # Construct and assign surfaces and volumes for different tissues ###
     all_final_volumes = build.getEntities(dim=3)
-    adipose = all_final_volumes[0][1]
-    glandular = all_final_volumes[1][1]
-    tissues.adipose.tags = [adipose]
-    tissues.glandular.tags = [glandular]
+    adipose = [all_final_volumes[0][1], all_final_volumes[1][1]]
+    glandular = [all_final_volumes[2][1]]
+    tissues.adipose.tags = adipose
+    tissues.glandular.tags = glandular
 
     # Surface tags for skin and chest
-    adipose_surfs = build.getSurfaceLoops(adipose)[1][0]
-    glandular_surfs = build.getSurfaceLoops(glandular)[1][0]
-    outer_surfaces = np.setdiff1d(adipose_surfs, glandular_surfs)
-    nipple_surfaces = list(np.setdiff1d(glandular_surfs, adipose_surfs))
-    tissues.skin.tags = [outer_surfaces[0]] + nipple_surfaces
-    tissues.chest.tags = [outer_surfaces[1]]
+    adipose_surfs = list(np.concatenate((build.getSurfaceLoops(adipose[0])[1][0], build.getSurfaceLoops(adipose[1])[1][0])))
+    glandular_surfs = list(build.getSurfaceLoops(glandular[0])[1][0])
+    all_surfs, counts = np.unique(adipose_surfs+glandular_surfs, return_counts = True)
+    outer_surfaces = all_surfs[counts == 1]
+    if settings.model.geometry.thickness_chest_wall > 0.004:
+        tissues.skin.tags = [outer_surfaces[1]]
+        tissues.chest.tags = [outer_surfaces[0]]
+    else:
+        tissues.skin.tags = [outer_surfaces[0]]
+        tissues.chest.tags = [outer_surfaces[1]]
 
 
 def construct_bspline_points(build, settings: Settings, n_points_u: int, n_points_v: int) -> np.ndarray[Any, np.dtype[np.int_]]:
@@ -134,6 +173,7 @@ def construct_bspline_points(build, settings: Settings, n_points_u: int, n_point
 
     # Rotate around the y-axis
     for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points_u), start=1):
+        theta = theta - 1/(2*n_points_u)*2*math.pi
         radius_var = settings.model.geometry.radius_breast * (1 + settings.model.geometry.asym_p1 * (np.cos(theta) + 1)
                                                               + settings.model.geometry.asym_p2 * (
                                                                       np.cos(2 * theta) + 1)
@@ -158,13 +198,19 @@ def build_mesh(mesh, tissues: TissueParts, settings: Settings):
     ####################
     # Generate 3D mesh #
     ####################
+    zbound = -gmsh.model.getBoundingBox(2, tissues.skin.tags[0])[2]
+    size_max = settings.model.mesh.ls
 
-    # Assign global mesh density by scaling mesh with length of mesh curves
-    curve_list = gmsh.model.occ.getEntities(dim=1)
-    for curve in curve_list:
-        length_curve = gmsh.model.occ.getMass(dim=1, tag=curve[1])
-        mesh.setTransfiniteCurve(curve[1], int(settings.model.mesh.density * length_curve))
+    gmsh.model.mesh.field.add("MathEval", 3)
+    gmsh.model.mesh.field.setString(3, "F",
+                                    f"({size_max}-0.002)*(Cos(z/{zbound}*1/2*Pi))+0.0025")
+    gmsh.model.mesh.field.setAsBackgroundMesh(3)
 
+    gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
+    gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 0)
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
+
+    gmsh.option.setNumber("Mesh.Algorithm", 5)
     # Generate mesh up to 3D, set to predefined mesh order, and optionally optimize
     mesh.generate(dim=3)
     mesh.setOrder(settings.model.mesh.order)

@@ -1,18 +1,17 @@
 [model.mesh]
 ls = 0.005
-density = 260
+density = 195.0
 optimize = true
 order = 2
 
 [model.geometry]
 radius_breast = 0.07
+asym_p1 = 0.12
+asym_p2 = 0.03
 thickness_chest_wall = 0.002
 radius_nipple = 0.005
 scaling_factor_glandular = 0.8
 angle_nipple = 30
-asym_p1 = 0.12
-asym_p2 = 0.02
-asym_p3 = 0.03
 
 [material.skin]
 density = 1100.0

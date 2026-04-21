@@ -99,8 +99,6 @@ def feb_to_blender(filepath: Path):  # Input should be path to .vtk files
             pl.add_mesh(vtk_mesh_0)
             pl.export_obj(filename=filepath_obj_0)
 
-
-
     # Save data to binary .npy file
     np.save(str(filepath_npy), surface_disp_obj)
     logger.info(f"Saving displacements: {filepath_npy}.")
