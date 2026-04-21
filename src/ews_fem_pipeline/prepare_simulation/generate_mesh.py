@@ -69,6 +69,8 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
                  settings.model.geometry.scaling_factor_glandular_xz, settings.model.geometry.scaling_factor_glandular_y,
                  settings.model.geometry.scaling_factor_glandular_xz)
 
+    # Cut a surface at distance  ~1 element from the chest, this is used later for meshing purposes
+    # make sure the space between this layer and the glandular tissue is large enough
     if settings.model.geometry.thickness_chest_wall > 0.004:
         thickness_layer1 = 0.002
     else:
@@ -80,37 +82,61 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
 
     # Cut torso from breast shape
     build.cut([(3, 1)], [(3, 2)], removeTool=False)
-    # Move and cut torso from glandular tissue to ensure a stable layer of adipose tissue on chest
-    build.translate([(3, 2)], 0, thickness_layer1, 0)
-    # build.intersect([(3,4)], [(2, 12)], removeObject = True, removeTool=False) #surfacetag = 15
-    build.cut([(3, 4)], [(3, 2)], removeTool=False)
+    build.intersect([(3,4)], [(2, 12)], removeObject = True, removeTool=False) #surfacetag = 15
+
+    # Cut torso shape from glandular, forming an even layer of adipose tissue between chest and glandular
     if thickness_layer1 != settings.model.geometry.thickness_chest_wall:
         build.translate([(3, 2)], 0, settings.model.geometry.thickness_chest_wall - thickness_layer1, 0)
-    build.cut([(3, 3)], [(3, 2)], removeTool=True)
+    build.cut([(3, 3)], [(3, 2)], removeTool=False)
+    build.translate([(3, 2)], 0, -settings.model.geometry.thickness_chest_wall, 0)
 
-    build.addThruSections([build.getCurveLoops(11)[0][0], build.getCurveLoops(16)[0][0]]) #5
-    build.remove([(3, 4)], recursive = True)
-    build.cut([(3, 1)], [(3, 5)], removeTool=False)
+    # Define curves of surfaces of chest wall (surftag 11) and new mid-layer (surftag 15)
+    curve1 = build.getCurveLoops(11)[1][0][0]
+    curve2 = build.getCurveLoops(15)[1][0][0]
+
+    # Split the base curves in two to create the connection between the base surfaces in two parts
+    plane = build.addRectangle(-0.2, -0.2, 0, 0.2, 0.4, tag = 0)
+    fragmented = build.fragment([(1, curve1), (1, curve2)], [(2, plane)], removeObject = False, removeTool=True)
+    build.remove([(2, 0)], recursive=True)
+
+    # Add two lines connecting the two surfaces
+    sideline1 = build.addLine(149, 146)
+    sideline2 = build.addLine(154, 155)
+
+    # Define both halves of the connecting surface
+    curveloop1 = build.addCurveLoop([fragmented[1][0][0][1], sideline1, fragmented[1][1][0][1], sideline2])
+    curveloop2 = build.addCurveLoop([fragmented[1][0][1][1], sideline1, fragmented[1][1][1][1], sideline2])
+    sidesurf1 = build.addBSplineFilling(curveloop1)
+    sidesurf2 = build.addBSplineFilling(curveloop2)
+    curve2_split = build.addWire([fragmented[1][1][0][1], fragmented[1][1][1][1]])
+    surf2 = build.addTrimmedSurface(15, [curve2_split], wire3D = True)
+    build.fuse([(2, sidesurf1), (2, sidesurf2), (2, 11)], [(2, surf2)])
+    build.addVolume([build.addSurfaceLoop([sidesurf1, sidesurf2, 11, surf2], sewing=False)], tag=4)
+
+
+    build.cut([(3, 1)], [(3, 4)], removeTool=False)
 
     # Add duct and nipple as a cylinder
-    build.addSphere(0, settings.model.geometry.radius_breast-0.005, 0, settings.model.geometry.radius_nipple, tag=7)
     build.addCylinder(0, settings.model.geometry.radius_breast - 0.04, 0, 0, 0.035,
                       0, settings.model.geometry.radius_nipple, tag=6)
+    build.addSphere(0, settings.model.geometry.radius_breast-0.005, 0, settings.model.geometry.radius_nipple, tag=7)
+
     # Fuse duct/nipple with glandular tissue
     build.fuse([(3, 3)], [(3, 7), (3,6)], tag=8)
     # Separate glandular from adipose tissue
     build.cut([(3, 1)], [(3, 8)], removeTool=False)
 
-    all_surfaces = build.getEntities(dim=2)
-    all_volumes = build.getEntities(dim=3)
-
-    # Fragment full model. Ensures no surfaces and volumes overlap. Note: replaces all tags!
-    build.fragment(all_volumes, all_surfaces)
 
     # Remove lingering elements
     build.remove(build.getEntities(dim=2))
     build.remove(build.getEntities(dim=1))
     build.remove(build.getEntities(dim=0))
+
+    # Fragment full model. Ensures no surfaces and volumes overlap. Note: replaces all tags!
+    all_surfaces = build.getEntities(dim=2)
+    all_volumes = build.getEntities(dim=3)
+    build.fragment(all_volumes, all_surfaces)
+
 
     assign_tissues(build, mesh_parts.tissue_parts, settings)
     # Synchronize the geometry before assigning meshing
@@ -147,6 +173,7 @@ def construct_bspline_points(build, settings: Settings, n_points_u: int, n_point
 
     # Rotate around the y-axis
     for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points_u), start=1):
+        theta = theta - 1/(2*n_points_u)*2*math.pi
         radius_var = settings.model.geometry.radius_breast * (1 + settings.model.geometry.asym_p1 * (np.cos(theta) + 1)
                                                               + settings.model.geometry.asym_p2 * (
                                                                       np.cos(2 * theta) + 1)
