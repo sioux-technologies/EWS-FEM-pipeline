@@ -53,7 +53,7 @@ def write_settings(params: np.ndarray, folder, title):
     settings = Settings()
     #set fixed settings for this problem
     settings.model.geometry.radius_nipple = float(0.0075)
-    settings.model.mesh.order = 1
+    settings.model.mesh.order = 2
     settings.simulation.control_step2.time_steps = float(0)
     #set variable settings
     settings.model.geometry.radius_breast = float(params[0])
