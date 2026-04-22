@@ -3,6 +3,9 @@ from pathlib import Path
 import numpy as np
 import pyvista as pv
 import logging
+
+from pyvista import PolyData
+
 logger = logging.getLogger(__name__)
 
 from scripts.load_data import load_obj_file, point_clicker
@@ -62,13 +65,18 @@ def write_settings(params: np.ndarray, folder, title):
     return filepath_out_toml
 
 def breast_model(params, skin, n_points, n_slices, folder, title):
-    # Write parameters to settings file
-    filepath_out_toml = write_settings(params, folder, title)
+    output_title = f"{params[0]*1000:.0f}-{params[1]*1000:.0f}-{params[2]*1000:.0f}-{params[3]*1000:.0f}-{params[4]*10:.0f}"
+    output_path = folder / title / output_title
+    if (Path(folder/'defaults'/output_title).with_suffix('.obj')).is_file():
+        obj_files = Path(folder/'defaults'/output_title).with_suffix('.obj')
+    else:
+        # Write parameters to settings file
+        filepath_out_toml = write_settings(params, folder/title, output_title)
 
-    # Generate mesh, run, and generate displaced mesh .obj file
-    mesh_files = generate.callback([filepath_out_toml])
-    feb_files = fem.callback(mesh_files, jobs=0)
-    obj_files = feb_to_3d(feb_files[0])
+        # Generate mesh, run, and generate displaced mesh .obj file
+        mesh_files = generate.callback([filepath_out_toml])
+        feb_files = fem.callback(mesh_files, jobs=0)
+        obj_files = feb_to_3d(feb_files[0])
 
     # Load resulting mesh
     surface = load_obj_file(obj_files, switch_axes=False)
@@ -93,6 +101,56 @@ def breast_model(params, skin, n_points, n_slices, folder, title):
     return sq_err
 
     # return residuals
+
+def run_optimization(filepath: Path, folder: Path, params_0: np.ndarray = np.array([0.07, 0, 0, 0, 22.5]),
+                     n_points: int = 10, n_slices: int = 10):
+    ### Prepare input data
+    skin_segmented = prepare_data(filepath)
+
+    # Prepare settings and output files
+    title = filepath.stem
+    output_folder = folder / title
+
+    ### Run model simulations
+    settings_limols = LimolsSettings(x0=params_0, n_residuals=n_points * n_slices * 2,
+                                     scale=np.array([0.15, 0.5, 0.1, 0.1, 90]),
+                                     xu=np.array([0.15, 1, 1, 1, 45]), xl=np.array([0, -1, -1, -1, 0]),
+                                     maxfev=150)
+    solver = LimolsSolver(settings_limols)
+
+    parameter, expected_residual, step_size = solver.get_initial_step()
+    # 1st step
+    residual = breast_model(parameter, skin_segmented, n_points, n_slices, folder, title)
+    parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
+    # 2nd to last step
+    while not solver.done:
+        residual = breast_model(parameter, skin_segmented, n_points, n_slices, folder, title)
+        parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
+
+    show_results(folder, skin_segmented, title)
+
+
+def show_results(folder: Path, skin_segmented: PolyData, title: str):
+    model_skin_final = (load_obj_file((Path(folder) / 'output' / title).with_suffix('.obj')))
+    center_breast(model_skin_final, nipple_coord=model_skin_final.points[np.argmax(model_skin_final.points[:, 1])])
+
+    plotter = pv.Plotter()
+    plotter.add_axes()
+    plotter.view_xz()
+    plotter.add_mesh(model_skin_final, opacity=0.8, color='yellow')
+    plotter.add_mesh(skin_segmented, opacity=0.8, color='blue')
+    plotter.show()
+
+
+def prepare_data(filepath) -> PolyData:
+    # Import target surface and determine center (nipple)
+    skin = load_obj_file(filepath, scale=0.2,
+                         switch_axes=True)  # data is not to scale, hence the 0.2 (guesstimated)
+    # Translate such that the nipple is at the origin
+    center_breast(skin)
+    # Segment the breast and get projection points
+    skin_segmented = extract_breast(skin)
+    return skin_segmented
 
 
 def center_breast(skin: pv.PolyData | pv.UnstructuredGrid, nipple_coord: tuple = None):
@@ -122,46 +180,9 @@ def find_area_normal(skin: pv.PolyData | pv.UnstructuredGrid, radius: float, cen
 
 
 if __name__ == "__main__":
-    ### Prepare input data
-    # Import target surface and determine center (nipple)
-    filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3032_01_lr.frame_001.obj")
-    skin = load_obj_file(filepath, scale = 0.2, switch_axes=True) #data is not to scale, hence the 0.2 (guesstimated)
+    ### User inputs
+    filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3043_01_lr.frame_001.obj")
     n_points = 10
     n_slices = 10
-    # Translate such that the nipple is at the origin
-    center_breast(skin)
-
-    # Segment the breast and get projection points
-    skin_segmented = extract_breast(skin)
-
-
-    # Prepare settings and output files
     folder = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization")
-    title = filepath.stem
-
-    # Initial guess for parameters
-    params_0 = np.array([0.07, 0, 0, 0, 22.5])
-
-    ### Run model simulations
-    settings_limols = LimolsSettings(x0=params_0, n_residuals=n_points*n_slices*2, scale = np.array([0.15, 0.5, 0.1, 0.1, 90]),
-                                     xu=np.array([0.15, 1, 1, 1, 45]), xl = np.array([0,-1, -1, -1, 0]),
-                                     maxfev = 150)
-    solver = LimolsSolver(settings_limols)
-
-    parameter, expected_residual, step_size = solver.get_initial_step()
-    #1st step
-    residual = breast_model(parameter, skin_segmented, n_points, n_slices, folder, title)
-    parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
-    # 2nd to last step
-    while not solver.done:
-        residual = breast_model(parameter, skin_segmented, n_points, n_slices, folder, title)
-        parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
-
-    model_skin_final = (load_obj_file((Path(folder) / 'output' /title).with_suffix('.obj')))
-    center_breast(model_skin_final, nipple_coord = model_skin_final.points[np.argmax(model_skin_final.points[:, 1])])
-    plotter = pv.Plotter()
-    plotter.add_axes()
-    plotter.view_xz()
-    plotter.add_mesh(model_skin_final, opacity = 0.8, color='yellow')
-    plotter.add_mesh(skin_segmented, opacity = 0.8, color='blue')
-    plotter.show()
+    run_optimization(filepath, folder)
