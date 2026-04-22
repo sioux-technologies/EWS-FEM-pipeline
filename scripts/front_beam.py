@@ -139,11 +139,7 @@ if __name__ == "__main__":
     folder = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization")
     title = filepath.stem
 
-    # first guess for radius and write settings
-    # bounds = np.array(skin_segmented.bounds)
-    # guess_radius_breast = float(1/4*np.abs((bounds[0] - bounds[1])))
-    # if guess_radius_breast > 0.15:
-    #     guess_radius_breast = 0.15
+    # Initial guess for parameters
     params_0 = np.array([0.07, 0, 0, 0, 22.5])
 
     ### Run model simulations
