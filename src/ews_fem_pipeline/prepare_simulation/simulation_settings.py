@@ -668,8 +668,8 @@ class SimulationSettings(ExtendedBaseModel):
     """
     control_step1: ControlSettings = ControlSettings(
         analysis="STATIC",
-        time_steps=10,
-        step_size=0.1,
+        time_steps=20,
+        step_size=0.05,
         plot_zero_state="0",
         plot_range="0,-1",
         plot_level="PLOT_NEVER",
