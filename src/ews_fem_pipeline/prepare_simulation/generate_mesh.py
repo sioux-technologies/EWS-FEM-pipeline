@@ -213,7 +213,7 @@ def build_mesh(mesh, tissues: TissueParts, settings: Settings):
 
     gmsh.model.mesh.field.add("MathEval", 3)
     gmsh.model.mesh.field.setString(3, "F",
-                                    f"({size_max}-0.002)*(Cos(z/{zbound}*1/2*Pi))+0.0025")
+                                    f"({size_max}-0.003)*(Cos(z/{zbound}*1/2*Pi))+0.003")
     gmsh.model.mesh.field.setAsBackgroundMesh(3)
 
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
