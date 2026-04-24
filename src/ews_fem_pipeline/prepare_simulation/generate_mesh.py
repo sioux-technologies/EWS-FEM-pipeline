@@ -208,12 +208,15 @@ def build_mesh(mesh, tissues: TissueParts, settings: Settings):
     ####################
     # Generate 3D mesh #
     ####################
-    zbound = -gmsh.model.getBoundingBox(2, tissues.skin.tags[0])[2]
+    zbound = np.abs(gmsh.model.getBoundingBox(2, tissues.skin.tags[0])[2])
     size_max = settings.model.mesh.ls
-
-    gmsh.model.mesh.field.add("MathEval", 3)
-    gmsh.model.mesh.field.setString(3, "F",
-                                    f"({size_max}-0.003)*(Cos(z/{zbound}*1/2*Pi))+0.003")
+    gmsh.model.mesh.field.add("Box", 1)
+    gmsh.model.mesh.field.setNumber(1, 'VOut', size_max)
+    gmsh.model.mesh.field.add("MathEval", 2)
+    gmsh.model.mesh.field.setString(2, "F",
+                                    f"{size_max}/{np.abs(zbound)/2}*(z+{zbound})+0.003")
+    gmsh.model.mesh.field.add("Min", 3)
+    gmsh.model.mesh.field.setNumbers(3, "FieldsList", [1,2])
     gmsh.model.mesh.field.setAsBackgroundMesh(3)
 
     gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
