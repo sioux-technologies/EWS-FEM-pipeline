@@ -2,12 +2,6 @@ from limols import LimolsSettings, LimolsSolver
 from pathlib import Path
 import numpy as np
 import pyvista as pv
-import logging
-
-from pyvista import PolyData
-
-logger = logging.getLogger(__name__)
-
 from scripts.load_data import load_obj_file, point_clicker
 from ews_fem_pipeline.prepare_simulation import Settings, write_settings_to_toml, load_settings_from_toml
 from ews_fem_pipeline.cli import generate, fem
@@ -68,8 +62,11 @@ def write_settings(params: np.ndarray, folder, title, settings_file: Path = None
     return filepath_out_toml
 
 def breast_analysis(params, folder, title, skin):
+    # Run FEM model with given input parameters
     breast_model_obj = run_breast_model(params, folder, title)
+    # Load resulting model surface
     breast_surface = load_obj_file(breast_model_obj, switch_axes=False)
+    # Calculate distance between model and target surfaces
     residuals = compare_geometries(breast_surface, skin)
     return residuals
 
@@ -87,8 +84,8 @@ def run_breast_model(params, folder, title) -> Path:
         obj_files = feb_to_3d(feb_files[0])
     return obj_files
 
-def compare_geometries(breast_model_geom: pv.PolyData, breast_target_geom: pv.PolyData, n_points: int =10, n_slices: int = 10) \
-        -> np.ndarray:
+def compare_geometries(breast_model_geom: pv.PolyData|pv.UnstructuredGrid, breast_target_geom: pv.PolyData,
+                       n_points: int =10, n_slices: int = 10) -> np.ndarray:
     # Load model mesh
     center_breast(breast_model_geom, nipple_coord = breast_model_geom.points[np.argmax(breast_model_geom.points[:, 1])])
     #Project projection points on model mesh
@@ -108,7 +105,7 @@ def compare_geometries(breast_model_geom: pv.PolyData, breast_target_geom: pv.Po
     sq_err = np.sum(np.square(np.array(pcd_model.points)[correspondence[:, 0]] - np.array(pcd_target.points)[correspondence[:, 1]]), axis=1)
     return sq_err
 
-def show_results(folder: Path, skin_segmented: PolyData, title: str):
+def show_results(folder: Path, skin_segmented: pv.PolyData, title: str):
     model_skin_final = (load_obj_file((Path(folder) / 'output' / title).with_suffix('.obj')))
     center_breast(model_skin_final, nipple_coord=model_skin_final.points[np.argmax(model_skin_final.points[:, 1])])
 
@@ -120,7 +117,7 @@ def show_results(folder: Path, skin_segmented: PolyData, title: str):
     plotter.show()
 
 
-def prepare_data(filepath) -> PolyData:
+def prepare_data(filepath) -> pv.PolyData:
     # Import target surface and determine center (nipple)
     skin = load_obj_file(filepath, scale=0.2,
                          switch_axes=True)  # data is not to scale, hence the 0.2 (guesstimated)
@@ -133,12 +130,14 @@ def prepare_data(filepath) -> PolyData:
 
 def center_breast(skin: pv.PolyData | pv.UnstructuredGrid, nipple_coord: tuple = None):
     if nipple_coord is None:
-        # Translate such that the nipple is at the origin
+        # If no nipple is given, let user define nipple coordinate through interface
         nipple_coord = point_clicker(skin, message='Click point for nipple. ')[0]
-        skin.translate(-1 * nipple_coord, inplace=True)
-    else:
-        skin.translate(-1*nipple_coord, inplace=True)
+
+    # Translate such that nipple is at origin
+    skin.translate(-1 * nipple_coord, inplace=True)
+    # Find direction of nipple
     nipple_normal = find_area_normal(skin, radius = 0.02, center=(0,0,0))
+    # Turn mesh such that nipple direction is in YZ plane
     nipple_normal[2] = 0
     nipple_normal = nipple_normal/np.linalg.norm(nipple_normal)
     rot_axis = np.cross(nipple_normal, (0, 1, 0))
@@ -147,28 +146,26 @@ def center_breast(skin: pv.PolyData | pv.UnstructuredGrid, nipple_coord: tuple =
     skin.rotate_vector(vector=rot_axis, angle=rot_angle, inplace=True)
 
 
-def find_area_normal(skin: pv.PolyData | pv.UnstructuredGrid, radius: float, center: tuple = (0, 0, 0)) -> np.ndarray:
+def find_area_normal(surface: pv.PolyData | pv.UnstructuredGrid, radius: float, center: tuple = (0, 0, 0)) -> np.ndarray:
     search_volume = pv.Sphere(radius=radius, center=center)
-    search_area = skin.select_interior_points(search_volume, inside_out=False)
+    search_area = surface.select_interior_points(search_volume, inside_out=False)
     search_area = search_area.threshold(0.5)
     search_area = search_area.extract_surface(algorithm=None)
     nipple_normal = np.average(search_area.compute_normals()['Normals'], axis=0)
     nipple_normal = nipple_normal / np.linalg.norm(nipple_normal)
     return nipple_normal
 
-def run_optimization(filepath: Path, folder: Path|None = None, params_0: np.ndarray = np.array([0.07, 0, 0, 0, 22.5]),
-                     n_points: int = 10, n_slices: int = 10):
-    ### Prepare input data
-    skin_segmented = prepare_data(filepath)
+def run_optimization(target_obj: Path, output_folder: Path | None = None, params_0: np.ndarray = np.array([0.07, 0, 0, 0, 22.5])):
+    # Prepare input data
+    skin_segmented = prepare_data(target_obj)
 
     # Prepare settings and output files
-    title = filepath.stem
-    if folder == None:
-        folder = filepath.parent
-    output_folder = folder / title
+    title = target_obj.stem
+    if output_folder == None:
+        output_folder = target_obj.parent
 
-    ### Run model simulations
-    settings_limols = LimolsSettings(x0=params_0, n_residuals=n_points * n_slices * 2,
+    # Run model simulations
+    settings_limols = LimolsSettings(x0=params_0, n_residuals=100 * 2,
                                      scale=np.array([0.15, 0.5, 0.1, 0.1, 90]),
                                      xu=np.array([0.15, 1, 1, 1, 45]), xl=np.array([0, -1, -1, -1, 0]),
                                      maxfev=150)
@@ -183,12 +180,11 @@ def run_optimization(filepath: Path, folder: Path|None = None, params_0: np.ndar
         residual = breast_analysis(parameter, output_folder, title, skin_segmented)
         parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
 
-    show_results(folder, skin_segmented, title)
+    # show resulting meshes to compare
+    show_results(output_folder, skin_segmented, title)
 
 if __name__ == "__main__":
     ### User inputs
-    filepath = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3043_01_lr.frame_001.obj")
-    n_points = 10
-    n_slices = 10
-    folder = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization")
-    run_optimization(filepath, folder)
+    target_path = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3043_01_lr.frame_001.obj")
+    opt_folder = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization")
+    run_optimization(target_path, opt_folder)
