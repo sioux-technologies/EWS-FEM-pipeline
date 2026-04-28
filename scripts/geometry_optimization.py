@@ -96,43 +96,9 @@ def breast_model(params, skin, n_points, n_slices, folder, title):
 
     # compute transformation and SE
     reg_p2p = o3d.pipelines.registration.registration_icp(pcd_model, pcd_target, 0.1)
-    pcd_model.transform(reg_p2p.transformation)
-    # dists = pcd_model.compute_cloud_distance(pcd_target)
     correspondence = np.array(reg_p2p.correspondence_set)
     sq_err = np.sum(np.square(np.array(pcd_model.points)[correspondence[:, 0]] - np.array(pcd_target.points)[correspondence[:, 1]]), axis=1)
     return sq_err
-
-    # return residuals
-
-def run_optimization(filepath: Path, folder: Path|None = None, params_0: np.ndarray = np.array([0.07, 0, 0, 0, 22.5]),
-                     n_points: int = 10, n_slices: int = 10):
-    ### Prepare input data
-    skin_segmented = prepare_data(filepath)
-
-    # Prepare settings and output files
-    title = filepath.stem
-    if folder == None:
-        folder = filepath.parent
-    output_folder = folder / title
-
-    ### Run model simulations
-    settings_limols = LimolsSettings(x0=params_0, n_residuals=n_points * n_slices * 2,
-                                     scale=np.array([0.15, 0.5, 0.1, 0.1, 90]),
-                                     xu=np.array([0.15, 1, 1, 1, 45]), xl=np.array([0, -1, -1, -1, 0]),
-                                     maxfev=150)
-    solver = LimolsSolver(settings_limols)
-
-    parameter, expected_residual, step_size = solver.get_initial_step()
-    # 1st step
-    residual = breast_model(parameter, skin_segmented, n_points, n_slices, folder, title)
-    parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
-    # 2nd to last step
-    while not solver.done:
-        residual = breast_model(parameter, skin_segmented, n_points, n_slices, folder, title)
-        parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
-
-    show_results(folder, skin_segmented, title)
-
 
 def show_results(folder: Path, skin_segmented: PolyData, title: str):
     model_skin_final = (load_obj_file((Path(folder) / 'output' / title).with_suffix('.obj')))
@@ -182,6 +148,34 @@ def find_area_normal(skin: pv.PolyData | pv.UnstructuredGrid, radius: float, cen
     nipple_normal = nipple_normal / np.linalg.norm(nipple_normal)
     return nipple_normal
 
+def run_optimization(filepath: Path, folder: Path|None = None, params_0: np.ndarray = np.array([0.07, 0, 0, 0, 22.5]),
+                     n_points: int = 10, n_slices: int = 10):
+    ### Prepare input data
+    skin_segmented = prepare_data(filepath)
+
+    # Prepare settings and output files
+    title = filepath.stem
+    if folder == None:
+        folder = filepath.parent
+    output_folder = folder / title
+
+    ### Run model simulations
+    settings_limols = LimolsSettings(x0=params_0, n_residuals=n_points * n_slices * 2,
+                                     scale=np.array([0.15, 0.5, 0.1, 0.1, 90]),
+                                     xu=np.array([0.15, 1, 1, 1, 45]), xl=np.array([0, -1, -1, -1, 0]),
+                                     maxfev=150)
+    solver = LimolsSolver(settings_limols)
+
+    parameter, expected_residual, step_size = solver.get_initial_step()
+    # 1st step
+    residual = breast_model(parameter, skin_segmented, n_points, n_slices, folder, title)
+    parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
+    # 2nd to last step
+    while not solver.done:
+        residual = breast_model(parameter, skin_segmented, n_points, n_slices, folder, title)
+        parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
+
+    show_results(folder, skin_segmented, title)
 
 if __name__ == "__main__":
     ### User inputs
