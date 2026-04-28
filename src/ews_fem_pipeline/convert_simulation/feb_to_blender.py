@@ -94,7 +94,7 @@ def feb_to_blender(filepath: Path):  # Input should be path to .vtk files
         surface_disp_obj[idx_time] = surface_disp[sort_idx]
         if idx_time == 0:
             vtk_mesh_0 = vtk_mesh.copy()
-            vtk_mesh_0.points = vtk_mesh.points-displacement
+            vtk_mesh_0.points = vtk_mesh.points+displacement
             pl = pv.Plotter()
             pl.add_mesh(vtk_mesh_0)
             pl.export_obj(filename=filepath_obj_0)
