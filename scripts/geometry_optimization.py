@@ -48,7 +48,7 @@ def project_front(surface: pv.PolyData | Path, points: np.ndarray):
             pass
     return np.array(intercepts)
 
-def write_settings(params: np.ndarray, folder, title, settings_file: Path = None):
+def write_settings(params: np.ndarray, folder, title, settings_file: Path = None)-> Path:
     if settings_file:
         #load alternate settings
         settings = load_settings_from_toml(settings_file)
@@ -67,7 +67,13 @@ def write_settings(params: np.ndarray, folder, title, settings_file: Path = None
     write_settings_to_toml(filepath=filepath_out_toml, settings=settings)
     return filepath_out_toml
 
-def breast_model(params, skin, n_points, n_slices, folder, title):
+def breast_analysis(params, folder, title, skin):
+    breast_model_obj = run_breast_model(params, folder, title)
+    breast_surface = load_obj_file(breast_model_obj, switch_axes=False)
+    residuals = compare_geometries(breast_surface, skin)
+    return residuals
+
+def run_breast_model(params, folder, title) -> Path:
     output_title = f"{params[0]*1000:.0f}-{params[1]*1000:.0f}-{params[2]*1000:.0f}-{params[3]*1000:.0f}-{params[4]*10:.0f}"
     if (Path(folder/'defaults'/output_title).with_suffix('.obj')).is_file():
         obj_files = Path(folder/'defaults'/output_title).with_suffix('.obj')
@@ -79,20 +85,22 @@ def breast_model(params, skin, n_points, n_slices, folder, title):
         mesh_files = generate.callback([filepath_out_toml])
         feb_files = fem.callback(mesh_files, jobs=0)
         obj_files = feb_to_3d(feb_files[0])
+    return obj_files
 
-    # Load resulting mesh
-    surface = load_obj_file(obj_files, switch_axes=False)
-    center_breast(surface, nipple_coord = surface.points[np.argmax(surface.points[:, 1])])
+def compare_geometries(breast_model_geom: pv.PolyData, breast_target_geom: pv.PolyData, n_points: int =10, n_slices: int = 10) \
+        -> np.ndarray:
+    # Load model mesh
+    center_breast(breast_model_geom, nipple_coord = breast_model_geom.points[np.argmax(breast_model_geom.points[:, 1])])
     #Project projection points on model mesh
-    surface= surface.extract_surface(algorithm=None)
-    projection_points = generate_projection_points(surface, n_points, n_slices)
-    projected_model = project_front(surface, projection_points)
+    breast_model_geom= breast_model_geom.extract_surface(algorithm=None)
+    projection_points = generate_projection_points(breast_model_geom, n_points, n_slices)
+    projected_model = project_front(breast_model_geom, projection_points)
 
     #Load both clouds into open3d
     pcd_model = o3d.geometry.PointCloud()
     pcd_model.points = o3d.utility.Vector3dVector(np.array(projected_model))
     pcd_target = o3d.geometry.PointCloud()
-    pcd_target.points = o3d.utility.Vector3dVector(np.array(skin.points))
+    pcd_target.points = o3d.utility.Vector3dVector(np.array(breast_target_geom.points))
 
     # compute transformation and SE
     reg_p2p = o3d.pipelines.registration.registration_icp(pcd_model, pcd_target, 0.1)
@@ -126,8 +134,8 @@ def prepare_data(filepath) -> PolyData:
 def center_breast(skin: pv.PolyData | pv.UnstructuredGrid, nipple_coord: tuple = None):
     if nipple_coord is None:
         # Translate such that the nipple is at the origin
-        nipple_coord = point_clicker(skin, message='Click point for nipple. ')
-        skin.translate(-1 * nipple_coord[0], inplace=True)
+        nipple_coord = point_clicker(skin, message='Click point for nipple. ')[0]
+        skin.translate(-1 * nipple_coord, inplace=True)
     else:
         skin.translate(-1*nipple_coord, inplace=True)
     nipple_normal = find_area_normal(skin, radius = 0.02, center=(0,0,0))
@@ -168,11 +176,11 @@ def run_optimization(filepath: Path, folder: Path|None = None, params_0: np.ndar
 
     parameter, expected_residual, step_size = solver.get_initial_step()
     # 1st step
-    residual = breast_model(parameter, skin_segmented, n_points, n_slices, folder, title)
+    residual = breast_analysis(parameter, output_folder, title, skin_segmented)
     parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
     # 2nd to last step
     while not solver.done:
-        residual = breast_model(parameter, skin_segmented, n_points, n_slices, folder, title)
+        residual = breast_analysis(parameter, output_folder, title, skin_segmented)
         parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
 
     show_results(folder, skin_segmented, title)
