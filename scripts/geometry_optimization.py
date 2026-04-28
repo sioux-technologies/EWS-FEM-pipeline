@@ -9,7 +9,7 @@ from pyvista import PolyData
 logger = logging.getLogger(__name__)
 
 from scripts.load_data import load_obj_file, point_clicker
-from ews_fem_pipeline.prepare_simulation import Settings, write_settings_to_toml
+from ews_fem_pipeline.prepare_simulation import Settings, write_settings_to_toml, load_settings_from_toml
 from ews_fem_pipeline.cli import generate, fem
 from ews_fem_pipeline.convert_simulation.feb_to_3d import feb_to_3d
 import open3d as o3d
@@ -48,13 +48,16 @@ def project_front(surface: pv.PolyData | Path, points: np.ndarray):
             pass
     return np.array(intercepts)
 
-def write_settings(params: np.ndarray, folder, title):
-    settings = Settings()
+def write_settings(params: np.ndarray, folder, title, settings_file: Path = None):
+    if settings_file:
+        #load alternate settings
+        settings = load_settings_from_toml(settings_file)
+    else:
+        # use default settings
+        settings = Settings()
     #set fixed settings for this problem
-    settings.model.geometry.radius_nipple = float(0.0075)
-    settings.model.mesh.order = 2
-    settings.simulation.control_step2.time_steps = float(0)
-    #set variable settings
+    settings.simulation.control_step2.time_steps = float(0) #no dynamic steps
+    #set input parameters as settings
     settings.model.geometry.radius_breast = float(params[0])
     settings.model.geometry.asym_p1 = float(params[1])
     settings.model.geometry.asym_p2 = float(params[2])
@@ -66,7 +69,6 @@ def write_settings(params: np.ndarray, folder, title):
 
 def breast_model(params, skin, n_points, n_slices, folder, title):
     output_title = f"{params[0]*1000:.0f}-{params[1]*1000:.0f}-{params[2]*1000:.0f}-{params[3]*1000:.0f}-{params[4]*10:.0f}"
-    output_path = folder / title / output_title
     if (Path(folder/'defaults'/output_title).with_suffix('.obj')).is_file():
         obj_files = Path(folder/'defaults'/output_title).with_suffix('.obj')
     else:
@@ -102,13 +104,15 @@ def breast_model(params, skin, n_points, n_slices, folder, title):
 
     # return residuals
 
-def run_optimization(filepath: Path, folder: Path, params_0: np.ndarray = np.array([0.07, 0, 0, 0, 22.5]),
+def run_optimization(filepath: Path, folder: Path|None = None, params_0: np.ndarray = np.array([0.07, 0, 0, 0, 22.5]),
                      n_points: int = 10, n_slices: int = 10):
     ### Prepare input data
     skin_segmented = prepare_data(filepath)
 
     # Prepare settings and output files
     title = filepath.stem
+    if folder == None:
+        folder = filepath.parent
     output_folder = folder / title
 
     ### Run model simulations
