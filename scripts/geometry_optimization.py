@@ -31,7 +31,7 @@ def generate_projection_points(model_skin: pv.PolyData, n_points=10, n_slices = 
         points = np.append(points, np.outer(ws, np.array([np.sin(phi), -1*np.cos(phi)])), axis=0)
     return points
 
-def project_front(surface: pv.PolyData | Path, points: np.ndarray):
+def project_front(surface: pv.PolyData, points: np.ndarray):
     intercepts = []
     for point in points:
         projection_point = surface.ray_trace([point[0], 1, point[1]], [point[0], -1, point[1]], first_point=True)[0]
@@ -184,7 +184,6 @@ def run_optimization(target_obj: Path, output_folder: Path | None = None, params
     show_results(output_folder, skin_segmented, title)
 
 if __name__ == "__main__":
-    ### User inputs
     target_path = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3043_01_lr.frame_001.obj")
     opt_folder = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization")
     run_optimization(target_path, opt_folder)
