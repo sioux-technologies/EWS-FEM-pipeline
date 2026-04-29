@@ -39,13 +39,6 @@ class RangeSettings(BaseModel):
                 'xl':self.xl,
                 'xu':self.xu,}
 
-    def set_in_pipeline_settings(self, settings: Settings):
-        obj = settings
-        steps = self.setting_name.split('.')
-        for attr in steps[:-1]:
-            obj = getattr(obj, attr)
-        setattr(obj, steps[-1], self.x0)
-
 class OptimizationSettings(BaseModel):
     filesettings: FileSettings = FileSettings()
     limols: LimolsUserInput = LimolsUserInput()
@@ -71,14 +64,12 @@ class OptimizationSettings(BaseModel):
             setattr(limols_settings, field, getattr(self.limols, field))
         return limols_settings
 
-    def write_simulation_settings(self, settings: None|Path = None):
-        if not settings:
-            settings = Settings()
-        else:
-            settings = Settings() #TODO
+    def get_model_parameters(self):
+        setting_names = []
         for parameter in self.optimization_parameters.values():
-            parameter.set_in_pipeline_settings(settings)
-        return settings
+            setting_names.append(parameter.setting_name)
+        return setting_names
+
 
 
 def load_optimization_settings_toml(filepath: Path):
