@@ -98,6 +98,7 @@ def feb_to_blender(filepath: Path):  # Input should be path to .vtk files
             pl = pv.Plotter()
             pl.add_mesh(vtk_mesh_0)
             pl.export_obj(filename=filepath_obj_0)
+            logger.info(f"Saving perturbed mesh as .obj file at: {filepath_obj_0}.")
 
     # Save data to binary .npy file
     np.save(str(filepath_npy), surface_disp_obj)
