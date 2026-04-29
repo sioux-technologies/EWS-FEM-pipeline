@@ -6,6 +6,7 @@ from scripts.load_data import load_obj_file, point_clicker
 from ews_fem_pipeline.prepare_simulation import Settings, write_settings_to_toml, load_settings_from_toml
 from ews_fem_pipeline.cli import generate, fem
 from ews_fem_pipeline.convert_simulation.feb_to_3d import feb_to_3d
+from ews_fem_pipeline.optimize_geometry.optimization_settings import *
 import open3d as o3d
 
 def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid):
@@ -42,41 +43,47 @@ def project_front(surface: pv.PolyData, points: np.ndarray):
             pass
     return np.array(intercepts)
 
-def write_settings(params: np.ndarray, folder, title, settings_file: Path = None)-> Path:
+def write_settings(parameter_locations, params, filepath_out_toml, settings_file: Path = None) -> Path:
+        # params: np.ndarray, folder, title, settings_file: Path = None)-> Path:
     if settings_file:
         #load alternate settings
         settings = load_settings_from_toml(settings_file)
     else:
         # use default settings
         settings = Settings()
+
     #set fixed settings for this problem
     settings.simulation.control_step2.time_steps = float(0) #no dynamic steps
-    #set input parameters as settings
-    settings.model.geometry.radius_breast = float(params[0])
-    settings.model.geometry.asym_p1 = float(params[1])
-    settings.model.geometry.asym_p2 = float(params[2])
-    settings.model.geometry.asym_p3 = float(params[3])
-    settings.model.geometry.angle_nipple = float(params[4])
-    filepath_out_toml = (Path(folder) / title).with_suffix('.toml')
-    write_settings_to_toml(filepath=filepath_out_toml, settings=settings)
-    return filepath_out_toml
 
-def breast_analysis(params, folder, title, skin):
+    # set values for given parameters
+    for location, value in zip(parameter_locations, params):
+        obj = settings
+        steps = location.split('.')
+        for attr in steps[:-1]:
+            obj = getattr(obj, attr)
+        setattr(obj, steps[-1], float(value))
+
+    # Write to file
+    write_settings_to_toml(filepath=filepath_out_toml, settings=settings)
+
+def breast_analysis(parameter_locations, parameter, folder, title, skin):
+        # params, folder, title, skin):
     # Run FEM model with given input parameters
-    breast_model_obj = run_breast_model(params, folder, title)
+    breast_model_obj = run_breast_model(parameter_locations, parameter, folder, title)
     # Load resulting model surface
     breast_surface = load_obj_file(breast_model_obj, switch_axes=False)
     # Calculate distance between model and target surfaces
     residuals = compare_geometries(breast_surface, skin)
     return residuals
 
-def run_breast_model(params, folder, title) -> Path:
-    output_title = f"{params[0]*1000:.0f}-{params[1]*1000:.0f}-{params[2]*1000:.0f}-{params[3]*1000:.0f}-{params[4]*10:.0f}"
+def run_breast_model(parameter_locations, params, folder, title) -> Path:
+    output_title = '-'.join(f'{1000*param:.0f}' for param in params)
     if (Path(folder/'defaults'/output_title).with_suffix('.obj')).is_file():
         obj_files = Path(folder/'defaults'/output_title).with_suffix('.obj')
     else:
         # Write parameters to settings file
-        filepath_out_toml = write_settings(params, folder/title, output_title)
+        filepath_out_toml = (folder/title/output_title).with_suffix('.toml')
+        write_settings(parameter_locations, params, filepath_out_toml)
 
         # Generate mesh, run, and generate displaced mesh .obj file
         mesh_files = generate.callback([filepath_out_toml])
@@ -155,26 +162,34 @@ def find_area_normal(surface: pv.PolyData | pv.UnstructuredGrid, radius: float, 
     nipple_normal = nipple_normal / np.linalg.norm(nipple_normal)
     return nipple_normal
 
-def run_optimization(target_obj: Path, output_folder: Path | None = None, params_0: np.ndarray = np.array([0.07, 0, 0, 0, 22.5])):
-    # Prepare input data
-    skin_segmented = prepare_data(target_obj)
+
+
+def run_optimization(toml_filepath: Path):
+        # target_obj: Path, output_folder: Path | None = None, params_0: np.ndarray = np.array([0.07, 0, 0, 0, 22.5])):
+    optimization_settings = load_optimization_settings_toml(toml_filepath)
+    parameter_locations = optimization_settings.get_model_parameters()
 
     # Prepare settings and output files
-    title = target_obj.stem
-    if output_folder == None:
-        output_folder = target_obj.parent
+    target_path = Path(toml_filepath.parent/optimization_settings.filesettings.target_mesh_filename)
+    output_folder = Path()
+    title = target_path.stem    #TODO check filenames
+    if optimization_settings.filesettings.output_folder == None:
+        output_folder = target_path.parent
+    else:
+        output_folder = target_path.parent/output_folder
 
-    # Run model simulations
-    settings_limols = LimolsSettings(x0=params_0, n_residuals=100 * 2,
-                                     scale=np.array([0.15, 0.5, 0.1, 0.1, 90]),
-                                     xu=np.array([0.15, 1, 1, 1, 45]), xl=np.array([0, -1, -1, -1, 0]),
-                                     maxfev=150)
+    # Prepare input data
+    skin_segmented = prepare_data(target_path)
+
+    # Extract and set LIMOLS settings and solver
+    settings_limols = optimization_settings.set_limols_settings()
     solver = LimolsSolver(settings_limols)
 
+    # Get and run initial step
     parameter, expected_residual, step_size = solver.get_initial_step()
-    # 1st step
-    residual = breast_analysis(parameter, output_folder, title, skin_segmented)
+    residual = breast_analysis(parameter_locations, parameter, output_folder, title, skin_segmented)
     parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
+
     # 2nd to last step
     while not solver.done:
         residual = breast_analysis(parameter, output_folder, title, skin_segmented)
@@ -184,6 +199,6 @@ def run_optimization(target_obj: Path, output_folder: Path | None = None, params
     show_results(output_folder, skin_segmented, title)
 
 if __name__ == "__main__":
-    target_path = Path(r"C:\Users\stormf\OneDrive - Sioux Group B.V\Documents\EWS data\EWS_dataset\3043_01_lr.frame_001.obj")
-    opt_folder = Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization")
-    run_optimization(target_path, opt_folder)
+    target_path = (
+        Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization\testtest.toml"))
+    run_optimization(target_path)
