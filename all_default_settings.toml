@@ -1,17 +1,19 @@
 [model.mesh]
 ls = 0.005
-density = 195.0
+density = 260
 optimize = true
 order = 2
 
 [model.geometry]
 radius_breast = 0.07
-asym_p1 = 0.12
-asym_p2 = 0.03
-thickness_chest_wall = 0.002
-radius_nipple = 0.005
-scaling_factor_glandular = 0.8
+thickness_chest_wall = 0.005
+radius_nipple = 0.0075
+scaling_factor_glandular_y = 0.9
+scaling_factor_glandular_xz = 0.8
 angle_nipple = 30
+asym_p1 = 0.12
+asym_p2 = 0.02
+asym_p3 = 0.03
 
 [material.skin]
 density = 1100.0
@@ -46,8 +48,8 @@ coef2_glandular = 870
 
 [simulation.control_step1]
 analysis = "STATIC"
-time_steps = 10.0
-step_size = 0.1
+time_steps = 20.0
+step_size = 0.05
 plot_zero_state = "0"
 plot_range = "0,-1"
 plot_level = "PLOT_NEVER"
