@@ -63,7 +63,7 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
                       (1 / 2 * settings.model.geometry.radius_breast / np.sin(
                           1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), tag=2) #curved surfacetag = 12
 
-    # Build glandular tissue by copying and downscaling breast volume
+    # Build glandular tissue by copying and downscaling breast volume around origin
     build.copy([(3, 1)])  # tag = 3
     build.dilate([(3, 3)], 0, 0, 0,
                  settings.model.geometry.scaling_factor_glandular_xz, settings.model.geometry.scaling_factor_glandular_y,
