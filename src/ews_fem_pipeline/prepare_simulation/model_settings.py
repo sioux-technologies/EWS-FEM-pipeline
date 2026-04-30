@@ -17,6 +17,8 @@ class GeometrySettings(BaseModel):
                                                         extending from the main glandular tissue of the breast.
     - thickness_chest_wall: float [m > 0.005]           Sets the thickness of the disk attached to the chest wall. The disk
                                                         is subjected to the boundary conditions of the parabolic jump.
+                                                        WARNING: model does not work if thickness_chest_wall is smaller
+                                                        or very close to ls_min
     - scaling_factor_glandular: float [0 < f < 1]       Set the ratio of radius of breast : radius of glandular tissue
                                                         in all three dimensions.
     - angle_nipple: float [deg < 90]                    Sets the angle of the nipple with respect to the body front. The
@@ -41,18 +43,16 @@ class MeshSettings(BaseModel):
     INPUT PARAMETERS
     ================
 
-    - ls: float [> 0]       Sets the default mesh size, but will later be overwritten by the "density". Is required to
-                            set the gmsh mesh size.
-    - density: float [>0]   Sets the true mesh size. The number is a measure for the number of nodes per unit of length.
-                            A greater value implies a denser mesh. Cannot be set smaller than 90.
+    - ls_min: float [> 0]   Sets the minimum mesh size. Note: performance is bad for ls_min <0.003
+    - ls_max: float [> 0]   Sets the maximum mesh size.
     - optimize: bool        Optimizes the mesh of the model using the default gmsh tetrahedral mesh optimizer, or the
                             "HighOrder" optimizer for high order meshes (see input parameter "order").
     - order: int [1 or 2]   Sets the order of the elements. Can only be 1 or 2. Order 1 implies tri3 en tet4 elements,
                             while order 2 implies tri6 and tet10 elements.
     """
 
-    ls: float = 0.005
-    density: float = 260
+    ls_min: float = 0.003
+    ls_max: float = 0.005
     optimize: bool = True
     order: int = Field(2, ge=1, le=2)
 

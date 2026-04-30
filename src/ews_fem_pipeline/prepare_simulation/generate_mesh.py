@@ -71,8 +71,8 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
 
     # Create a surface at distance  ~1 element from the chest, this is used later for meshing purposes
     # make sure the space between this layer and the glandular tissue is large enough
-    if settings.model.geometry.thickness_chest_wall > 0.004:
-        thickness_layer1 = 0.002
+    if settings.model.geometry.thickness_chest_wall > settings.model.mesh.ls_min:
+        thickness_layer1 = settings.model.mesh.ls_min
     else:
         thickness_layer1 = settings.model.geometry.thickness_chest_wall
 
@@ -88,7 +88,6 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     build.intersect([(3,4)], [(2, 12)], removeObject = True, removeTool=False) #surftag = 15
 
     # Cut torso shape from glandular, forming an even layer of adipose tissue between chest and glandular
-    # Currently does not work for chest wall thickness < 0.004!!!
     # Also remove the torso shape
     if thickness_layer1 != settings.model.geometry.thickness_chest_wall:
         build.translate([(3, 2)], 0, settings.model.geometry.thickness_chest_wall - thickness_layer1, 0)
@@ -209,12 +208,11 @@ def build_mesh(mesh, tissues: TissueParts, settings: Settings):
     # Generate 3D mesh #
     ####################
     zbound = np.abs(gmsh.model.getBoundingBox(2, tissues.skin.tags[0])[2])
-    size_max = settings.model.mesh.ls
     gmsh.model.mesh.field.add("Box", 1)
-    gmsh.model.mesh.field.setNumber(1, 'VOut', size_max)
+    gmsh.model.mesh.field.setNumber(1, 'VOut', settings.model.mesh.ls_max)
     gmsh.model.mesh.field.add("MathEval", 2)
     gmsh.model.mesh.field.setString(2, "F",
-                                    f"{size_max}/{np.abs(zbound)/2}*(z+{zbound})+0.003")
+                    f"{settings.model.mesh.ls_max}/{np.abs(zbound)/2}*(z+{zbound})+{settings.model.mesh.ls_min}")
     gmsh.model.mesh.field.add("Min", 3)
     gmsh.model.mesh.field.setNumbers(3, "FieldsList", [1,2])
     gmsh.model.mesh.field.setAsBackgroundMesh(3)
