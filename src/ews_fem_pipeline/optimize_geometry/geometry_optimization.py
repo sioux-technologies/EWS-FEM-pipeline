@@ -171,12 +171,11 @@ def run_optimization(toml_filepath: Path):
 
     # Prepare settings and output files
     target_path = Path(toml_filepath.parent/optimization_settings.filesettings.target_mesh_filename)
-    output_folder = Path()
     title = target_path.stem    #TODO check filenames
     if optimization_settings.filesettings.output_folder == None:
         output_folder = target_path.parent
     else:
-        output_folder = target_path.parent/output_folder
+        output_folder = target_path.parent/optimization_settings.filesettings.output_folder
 
     # Prepare input data
     skin_segmented = prepare_data(target_path)
@@ -192,7 +191,7 @@ def run_optimization(toml_filepath: Path):
 
     # 2nd to last step
     while not solver.done:
-        residual = breast_analysis(parameter, output_folder, title, skin_segmented)
+        residual = breast_analysis(parameter_locations, parameter, output_folder, title, skin_segmented)
         parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
 
     # show resulting meshes to compare
@@ -200,5 +199,5 @@ def run_optimization(toml_filepath: Path):
 
 if __name__ == "__main__":
     target_path = (
-        Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization\testtest.toml"))
+        Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization\testtesttest.toml"))
     run_optimization(target_path)
