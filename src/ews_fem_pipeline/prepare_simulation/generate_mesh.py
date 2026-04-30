@@ -4,7 +4,7 @@ from typing import Any
 import gmsh
 import numpy as np
 
-
+from ews_fem_pipeline.prepare_simulation import Settings
 from ews_fem_pipeline.prepare_simulation.model_settings import MeshParts, TissueParts
 from ews_fem_pipeline.prepare_simulation.simulation_settings import Settings
 
@@ -69,31 +69,9 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
                  settings.model.geometry.scaling_factor_glandular_xz, settings.model.geometry.scaling_factor_glandular_y,
                  settings.model.geometry.scaling_factor_glandular_xz)
 
-    # Create a surface at distance  ~1 element from the chest, this is used later for meshing purposes
+    cut_torso(build, settings)
+    # Create a layer of  ~1 element from the chest, this is used later for meshing purposes
     # make sure the space between this layer and the glandular tissue is large enough
-    if settings.model.geometry.thickness_chest_wall > settings.model.mesh.ls_min:
-        thickness_layer1 = settings.model.mesh.ls_min
-    else:
-        thickness_layer1 = settings.model.geometry.thickness_chest_wall
-
-    scaling_layer = 1-(thickness_layer1/settings.model.geometry.radius_breast)
-    build.copy([(3, 1)])  # tag = 4
-    build.dilate([(3, 4)], 0, 0, 0, scaling_layer, scaling_layer, scaling_layer)
-
-    # Cut torso from breast shape
-    build.cut([(3, 1)], [(3, 2)], removeTool=False)
-
-    # Get the mid-layer surface by intersection of the torso and the mid-volume
-    build.translate([(3, 2)], 0, thickness_layer1, 0)
-    build.intersect([(3,4)], [(2, 12)], removeObject = True, removeTool=False) #surftag = 15
-
-    # Cut torso shape from glandular, forming an even layer of adipose tissue between chest and glandular
-    # Also remove the torso shape
-    if thickness_layer1 != settings.model.geometry.thickness_chest_wall:
-        build.translate([(3, 2)], 0, settings.model.geometry.thickness_chest_wall - thickness_layer1, 0)
-    build.cut([(3, 3)], [(3, 2)], removeTool=True)
-
-    # Build the mid-layer volume
     build_meshlayer(build)
 
     # Add duct and nipple as a cylinder
@@ -122,6 +100,32 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     assign_tissues(build, mesh_parts.tissue_parts, settings)
     # Synchronize the geometry before assigning meshing
     build.synchronize()
+
+
+def cut_torso(build, settings: Settings):
+
+    if settings.model.geometry.thickness_chest_wall > settings.model.mesh.ls_min:
+        thickness_layer1 = settings.model.mesh.ls_min
+    else:
+        thickness_layer1 = settings.model.geometry.thickness_chest_wall
+
+    scaling_layer = 1 - (thickness_layer1 / settings.model.geometry.radius_breast)
+    build.copy([(3, 1)])  # tag = 4
+    build.dilate([(3, 4)], 0, 0, 0, scaling_layer, scaling_layer, scaling_layer)
+
+    # Cut torso from breast shape
+    build.cut([(3, 1)], [(3, 2)], removeTool=False)
+
+    # Get the mid-layer surface by intersection of the torso and the mid-volume
+    build.translate([(3, 2)], 0, thickness_layer1, 0)
+    build.intersect([(3, 4)], [(2, 12)], removeObject=True, removeTool=False)  # surftag = 15
+
+    # Cut torso shape from glandular, forming an even layer of adipose tissue between chest and glandular
+    # Also remove the torso shape
+    if thickness_layer1 != settings.model.geometry.thickness_chest_wall:
+        build.translate([(3, 2)], 0, settings.model.geometry.thickness_chest_wall - thickness_layer1, 0)
+    build.cut([(3, 3)], [(3, 2)], removeTool=True)
+
 
 def construct_bspline_points(build, settings: Settings, n_points_u: int, n_points_v: int) -> np.ndarray[Any, np.dtype[np.int_]]:
     # Points for the breast surface are generated on circle arcs with variable radius to create asymmetry
@@ -153,6 +157,7 @@ def construct_bspline_points(build, settings: Settings, n_points_u: int, n_point
     return surface_control_points
 
 def build_meshlayer(build):
+    # A small layer of
     # Define curves of surfaces of chest wall (surftag 11) and new mid-layer (surftag 15)
     curve1 = build.getCurveLoops(11)[1][0][0]
     curve2 = build.getCurveLoops(15)[1][0][0]
