@@ -65,9 +65,10 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
 
     # Build glandular tissue by copying and downscaling breast volume
     build.copy([(3, 1)])  # tag = 3
-    build.dilate([(3, 3)], 0, 0, 0,
-                 settings.model.geometry.scaling_factor_glandular_xz, settings.model.geometry.scaling_factor_glandular_y,
-                 settings.model.geometry.scaling_factor_glandular_xz)
+    build.dilate([(3, 3)], x=0, y=0, z=0,
+                 a=settings.model.geometry.scaling_factor_glandular_xz,
+                 b=settings.model.geometry.scaling_factor_glandular_y,
+                 c=settings.model.geometry.scaling_factor_glandular_xz)
 
     cut_torso(build, settings)
     # Create a layer of  ~1 element from the chest, this is used later for meshing purposes
