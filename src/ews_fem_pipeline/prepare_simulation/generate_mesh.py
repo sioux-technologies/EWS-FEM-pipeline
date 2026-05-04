@@ -4,7 +4,6 @@ from typing import Any
 import gmsh
 import numpy as np
 
-from ews_fem_pipeline.prepare_simulation import Settings
 from ews_fem_pipeline.prepare_simulation.model_settings import MeshParts, TissueParts
 from ews_fem_pipeline.prepare_simulation.simulation_settings import Settings
 
