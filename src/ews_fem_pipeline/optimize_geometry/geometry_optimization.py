@@ -74,7 +74,7 @@ def breast_analysis(parameter_locations, parameter, folder, title, skin):
     breast_surface = load_obj_file(breast_model_obj, switch_axes=False)
     # Calculate distance between model and target surfaces
     residuals = compare_geometries(breast_surface, skin)
-    return residuals
+    return residuals, breast_model_obj
 
 def run_breast_model(parameter_locations, params, folder, title) -> Path:
     output_title = '-'.join(f'{1000*param:.0f}' for param in params)
@@ -109,11 +109,11 @@ def compare_geometries(breast_model_geom: pv.PolyData|pv.UnstructuredGrid, breas
     # compute transformation and SE
     reg_p2p = o3d.pipelines.registration.registration_icp(pcd_model, pcd_target, 0.1)
     correspondence = np.array(reg_p2p.correspondence_set)
-    sq_err = np.sum(np.square(np.array(pcd_model.points)[correspondence[:, 0]] - np.array(pcd_target.points)[correspondence[:, 1]]), axis=1)
-    return sq_err
+    dx = (np.array(pcd_model.points)[correspondence[:, 0]] - np.array(pcd_target.points)[correspondence[:, 1]]).flatten()
+    return dx
 
-def show_results(folder: Path, skin_segmented: pv.PolyData, title: str):
-    model_skin_final = (load_obj_file((Path(folder) / 'output' / title).with_suffix('.obj')))
+def show_results(filepath_model_obj: Path, skin_segmented: pv.PolyData):
+    model_skin_final = (load_obj_file(filepath_model_obj))
     center_breast(model_skin_final, nipple_coord=model_skin_final.points[np.argmax(model_skin_final.points[:, 1])])
 
     plotter = pv.Plotter()
@@ -182,20 +182,21 @@ def run_optimization(toml_filepath: Path):
 
     # Extract and set LIMOLS settings and solver
     settings_limols = optimization_settings.set_limols_settings()
+    settings_limols.n_residuals = 200*3 #200 projection points in 3 dimensions
     solver = LimolsSolver(settings_limols)
 
     # Get and run initial step
     parameter, expected_residual, step_size = solver.get_initial_step()
-    residual = breast_analysis(parameter_locations, parameter, output_folder, title, skin_segmented)
+    residual, model_obj = breast_analysis(parameter_locations, parameter, output_folder, title, skin_segmented)
     parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
 
     # 2nd to last step
     while not solver.done:
-        residual = breast_analysis(parameter_locations, parameter, output_folder, title, skin_segmented)
+        residual, model_obj = breast_analysis(parameter_locations, parameter, output_folder, title, skin_segmented)
         parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
 
     # show resulting meshes to compare
-    show_results(output_folder, skin_segmented, title)
+    show_results(model_obj, skin_segmented)
 
 if __name__ == "__main__":
     target_path = (
