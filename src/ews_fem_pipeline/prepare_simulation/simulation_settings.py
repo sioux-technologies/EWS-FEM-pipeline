@@ -234,7 +234,7 @@ class MaterialSettings(ExtendedBaseModel):
         k2=14.5,
         gamma=0,
         kappa=0,
-        c=100,
+        c=420,
     )
     glandular: MRProperties = MRProperties(
         density=1041,
