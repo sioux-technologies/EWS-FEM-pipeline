@@ -72,7 +72,7 @@ def write_to_feb(filepath: Path, mesh: MeshParts, settings: Settings):
     # Mass damping and gravity
     if settings.material.tumor.tumorous:
         FEB_element.mass_damping.val ="skin_part,glandular_part,adipose_part,tumor_part"
-        FEB_element.gravitational_acceleration.val ="skin_part,glandular_part,adipose_part, tumor_part"
+        FEB_element.gravitational_acceleration.val ="skin_part,glandular_part,adipose_part,tumor_part"
     FEB_element.mass_damping.to_xml(parent=mesh_elem)
     FEB_element.gravitational_acceleration.to_xml(parent=mesh_elem)
 

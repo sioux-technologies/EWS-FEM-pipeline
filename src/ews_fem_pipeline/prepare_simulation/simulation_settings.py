@@ -51,7 +51,7 @@ class FEBElement(BaseModel):
     skin: FEBField = FEBField(tag="material", id="1", name="skin", type="Mooney-Rivlin")
     adipose: FEBField = FEBField(tag="material", id="2", name="adipose", type="Holzapfel-Gasser-Ogden")
     glandular: FEBField = FEBField(tag="material", id="3", name="glandular", type="Mooney-Rivlin")
-    tumor: FEBField = FEBField(tag="tumor", id="4", name="tumor", type="Mooney-Rivlin")
+    tumor: FEBField = FEBField(tag="material", id="4", name="tumor", type="Mooney-Rivlin")
     mesh: FEBField = FEBField(tag="Mesh")
     mass_damping: FEBField = FEBField(tag="PartList", val="skin_part,glandular_part,adipose_part", name="Mass_damping")
     gravitational_acceleration: FEBField = FEBField(tag="PartList", val="skin_part,glandular_part,adipose_part",
