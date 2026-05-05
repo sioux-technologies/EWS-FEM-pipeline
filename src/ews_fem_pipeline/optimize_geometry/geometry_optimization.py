@@ -1,9 +1,8 @@
-from limols import LimolsSettings, LimolsSolver
-from pathlib import Path
-import numpy as np
+from limols import LimolsSolver
+import logging
 import pyvista as pv
 from scripts.load_data import load_obj_file, point_clicker
-from ews_fem_pipeline.prepare_simulation import Settings, write_settings_to_toml, load_settings_from_toml
+from ews_fem_pipeline.prepare_simulation import write_settings_to_toml, load_settings_from_toml
 from ews_fem_pipeline.cli import generate, fem
 from ews_fem_pipeline.convert_simulation.feb_to_3d import feb_to_3d
 from ews_fem_pipeline.optimize_geometry.optimization_settings import *
