@@ -232,8 +232,8 @@ class MaterialSettings(ExtendedBaseModel):
         pressure_model="default",
         k1=2.5,
         k2=14.5,
-        gamma=15,
-        kappa=1 / 6,
+        gamma=0,
+        kappa=0,
         c=100,
     )
     glandular: MRProperties = MRProperties(
