@@ -177,8 +177,8 @@ def build_meshlayer(build):
     # Define both halves of the connecting surface
     curveloop1 = build.addCurveLoop([fragmented[1][0][0][1], sideline1, fragmented[1][1][0][1], sideline2])
     curveloop2 = build.addCurveLoop([fragmented[1][0][1][1], sideline1, fragmented[1][1][1][1], sideline2])
-    sidesurf1 = build.addBSplineFilling(curveloop1)
-    sidesurf2 = build.addBSplineFilling(curveloop2)
+    sidesurf1 = build.addSurfaceFilling(curveloop1)
+    sidesurf2 = build.addSurfaceFilling(curveloop2)
     connecting_curves = build.addWire([fragmented[1][1][0][1], fragmented[1][1][1][1]])
     connecting_surf = build.addTrimmedSurface(15, [connecting_curves], wire3D=True)
     build.fuse([(2, sidesurf1), (2, sidesurf2), (2, 11)],
