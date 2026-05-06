@@ -78,9 +78,9 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     build_meshlayer(build)
 
     # Add duct and nipple as a cylinder
-    build.addCylinder(0, settings.model.geometry.radius_breast - 0.04, 0, 0, 0.035,
-                      0, settings.model.geometry.radius_nipple, tag=6)
-    build.addSphere(0, settings.model.geometry.radius_breast-0.005, 0, settings.model.geometry.radius_nipple, tag=7)
+    build.addSphere(0, settings.model.geometry.radius_breast-0.005, 0, settings.model.geometry.radius_nipple, tag=6)
+    build.addCylinder(0, 1/2* settings.model.geometry.radius_breast , 0, 0, 1/2* settings.model.geometry.radius_breast-0.005,
+                      0, settings.model.geometry.radius_nipple, tag=7)
 
     # Fuse duct/nipple with glandular tissue
     build.fuse([(3, 3)], [(3, 7), (3,6)], tag=8)
@@ -118,6 +118,20 @@ def cut_torso(build, settings: Settings):
 
     # Cut torso from breast shape
     build.cut([(3, 1)], [(3, 2)], removeTool=False)
+    assign_tissues(build, mesh_parts, settings)
+
+    # Remove lingering elements
+    build.remove(build.getEntities(dim=2))
+    build.remove(build.getEntities(dim=1))
+    build.remove(build.getEntities(dim=0))
+
+    # Synchronize the geometry before assigning meshing
+    build.synchronize()
+
+
+def assign_tissues(build, mesh_parts: MeshParts, settings: Settings):
+    # Alias for tissues. Only includes tissues, no nodes
+    tissues = mesh_parts.tissue_parts
 
     # Get the mid-layer surface by intersection of the torso and the mid-volume
     build.translate([(3, 2)], 0, thickness_layer1, 0)
@@ -207,7 +221,33 @@ def assign_tissues(build, tissues: TissueParts, settings: Settings):
         tissues.skin.tags = [outer_surfaces[0]]
         tissues.chest.tags = [outer_surfaces[1]]
 
+def construct_bspline_points(build, settings: Settings, n_points_u: int, n_points_v: int) -> np.ndarray[Any, np.dtype[np.int_]]:
+    # Points for the breast surface are generated on circle arcs with variable radius to create asymmetry
+    # 3/4 of a "sphere" are generated, this will be cut down later
 
+    # Initialize array for saving points
+    surface_control_points = np.empty((n_points_u, n_points_v), dtype=int)
+
+    # Rotate around the y-axis
+    for i, theta in enumerate(np.linspace(0, 2 * math.pi, n_points_u), start=1):
+        radius_var = settings.model.geometry.radius_breast * (1 + settings.model.geometry.asym_p1 * (np.cos(theta) + 1)
+                                                              + settings.model.geometry.asym_p2 * (
+                                                                      np.cos(2 * theta) + 1)
+                                                              + settings.model.geometry.asym_p3 * (
+                                                                      np.cos(3 * theta) + 1))
+        # the points are placed on a circle arc with a radius radius_extra > radius_var
+        radius_extra = radius_var / (np.sin(2 * np.arctan(settings.model.geometry.radius_breast / radius_var)))
+        for j, phi in enumerate(np.linspace(start=0, stop=np.pi, num=n_points_v, endpoint=False)):
+            surface_control_points[i - 1, j] = build.addPoint(radius_extra * np.cos(theta) * np.sin(phi),
+                                                              radius_extra * np.cos(
+                                                                  phi) + settings.model.geometry.radius_breast - radius_extra,
+                                                              radius_extra * np.sin(theta) * np.sin(phi))
+
+    # Close the loop
+    surface_control_points = np.concatenate((surface_control_points, surface_control_points[1, :].reshape(1, -1)),
+                                            axis=0)
+
+    return surface_control_points
 
 
 def build_mesh(mesh, tissues: TissueParts, settings: Settings):
