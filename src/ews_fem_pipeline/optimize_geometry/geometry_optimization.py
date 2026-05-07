@@ -199,5 +199,5 @@ def run_optimization(toml_filepath: Path):
 
 if __name__ == "__main__":
     target_path = (
-        Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization\testtesttest.toml"))
+        Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization_test_settings.toml"))
     run_optimization(target_path)
