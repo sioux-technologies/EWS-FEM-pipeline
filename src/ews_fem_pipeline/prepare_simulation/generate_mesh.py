@@ -94,7 +94,6 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     build.remove(build.getEntities(dim=1))
     build.remove(build.getEntities(dim=0))
 
-
     # Fragment full model. Ensures no surfaces and volumes overlap. Note: replaces all tags!
     all_surfaces = build.getEntities(dim=2)
     all_volumes = build.getEntities(dim=3)
@@ -177,8 +176,14 @@ def build_meshlayer(build):
     # Define both halves of the connecting surface
     curveloop1 = build.addCurveLoop([fragmented[1][0][0][1], sideline1, fragmented[1][1][0][1], sideline2])
     curveloop2 = build.addCurveLoop([fragmented[1][0][1][1], sideline1, fragmented[1][1][1][1], sideline2])
-    sidesurf1 = build.addSurfaceFilling(curveloop1)
-    sidesurf2 = build.addSurfaceFilling(curveloop2)
+    #addSurfaceFilling gives better result, but sometimes does not work for unknown reasons.
+    #In that case, we use BSplineFilling
+    try:
+        sidesurf1 = build.addSurfaceFilling(curveloop1)
+        sidesurf2 = build.addSurfaceFilling(curveloop2)
+    except:
+        sidesurf1 = build.addBSplineFilling(curveloop2)
+        sidesurf2 = build.addBSplineFilling(curveloop1)
     connecting_curves = build.addWire([fragmented[1][1][0][1], fragmented[1][1][1][1]])
     connecting_surf = build.addTrimmedSurface(15, [connecting_curves], wire3D=True)
     build.fuse([(2, sidesurf1), (2, sidesurf2), (2, 11)],
@@ -207,6 +212,7 @@ def assign_tissues(build, tissues: TissueParts, settings: Settings):
     else:
         tissues.skin.tags = [outer_surfaces[0]]
         tissues.chest.tags = [outer_surfaces[1]]
+
 
 def build_mesh(mesh, tissues: TissueParts, settings: Settings):
     ####################
