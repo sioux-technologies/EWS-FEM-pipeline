@@ -6,7 +6,7 @@ from ews_fem_pipeline.prepare_simulation import write_settings_to_toml, load_set
 from ews_fem_pipeline.cli import generate, fem
 from ews_fem_pipeline.convert_simulation.feb_to_3d import feb_to_3d
 from ews_fem_pipeline.optimize_geometry.optimization_settings import *
-import open3d as o3d
+from scipy.spatial import KDTree as scikdtree
 
 def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid):
     more_points = np.array(point_clicker(skin, message='Click points around breast area ', rotation=False))
@@ -99,17 +99,14 @@ def compare_geometries(breast_model_geom: pv.PolyData|pv.UnstructuredGrid, breas
     projection_points = generate_projection_points(breast_model_geom, n_points, n_slices)
     projected_model = project_front(breast_model_geom, projection_points)
 
-    #Load both clouds into open3d
-    pcd_model = o3d.geometry.PointCloud()
-    pcd_model.points = o3d.utility.Vector3dVector(np.array(projected_model))
-    pcd_target = o3d.geometry.PointCloud()
-    pcd_target.points = o3d.utility.Vector3dVector(np.array(breast_target_geom.points))
-
-    # compute transformation and SE
-    reg_p2p = o3d.pipelines.registration.registration_icp(pcd_model, pcd_target, 0.1)
-    correspondence = np.array(reg_p2p.correspondence_set)
-    dx = (np.array(pcd_model.points)[correspondence[:, 0]] - np.array(pcd_target.points)[correspondence[:, 1]]).flatten()
+    dists, inds = closest_points(breast_target_geom, projected_model)
+    dx = (breast_target_geom.points[inds] - projected_model).flatten()
     return dx
+
+def closest_points(poly, points):
+    tree = scikdtree(poly.points)
+    distances, indices = tree.query(points)
+    return distances, indices
 
 def show_results(filepath_model_obj: Path, skin_segmented: pv.PolyData):
     model_skin_final = (load_obj_file(filepath_model_obj))
@@ -199,5 +196,5 @@ def run_optimization(toml_filepath: Path):
 
 if __name__ == "__main__":
     target_path = (
-        Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization_test_settings.toml"))
+        Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization\testtesttest.toml"))
     run_optimization(target_path)

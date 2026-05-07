@@ -35,6 +35,7 @@ dependencies = [
   "toml",
   "open3d",
   "limols",
+  "scipy>=1.17.1",
 ]
 
 [project.optional-dependencies]
