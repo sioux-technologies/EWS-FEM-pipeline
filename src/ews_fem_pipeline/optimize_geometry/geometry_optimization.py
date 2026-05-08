@@ -52,6 +52,7 @@ def write_settings(parameter_locations, params, filepath_out_toml, settings_file
         settings = Settings()
 
     #set fixed settings for this problem
+    settings.material.tumor.tumorous = False
     settings.simulation.control_step2.time_steps = float(0) #no dynamic steps
 
     # set values for given parameters
@@ -196,5 +197,5 @@ def run_optimization(toml_filepath: Path):
 
 if __name__ == "__main__":
     target_path = (
-        Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization\testtesttest.toml"))
+        Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization_test_settings.toml"))
     run_optimization(target_path)
