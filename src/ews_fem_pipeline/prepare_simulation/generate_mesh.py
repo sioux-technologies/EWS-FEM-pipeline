@@ -50,27 +50,21 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
     build.addCurveLoop([3], tag=2)
     build.addSurfaceFilling(2, tag=2)
     build.addSurfaceLoop([1, 2], tag=1)
-    build.addVolume([1], tag=1)
+    adipose = build.addVolume([1], tag=1)
 
     # remove control points
     build.remove(build.getEntities(dim=0))
 
-    # Build shape of torso
-    if settings.model.geometry.angle_nipple != 0:
-        build.addCylinder(0, -(1 / 2 * settings.model.geometry.radius_breast / np.sin(
-            1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), -0.2,
-                          0, 0, 0.4,
-                          (1 / 2 * settings.model.geometry.radius_breast / np.sin(
-                              1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), tag=2)
-    else:
-        build.addBox(-0.5, 0, -0.5, 1, -1, 1, tag = 2)
-
     # Build glandular tissue by copying and downscaling breast volume
-    build.copy([(3, 1)])  # tag = 3
-    build.dilate([(3, 3)], x=0, y=0, z=0,
+    build.copy([(3, 1)])  # tag = 2
+    build.dilate([(3, 2)], x=0, y=0, z=0,
                  a=settings.model.geometry.scaling_factor_glandular_xz,
                  b=settings.model.geometry.scaling_factor_glandular_y,
                  c=settings.model.geometry.scaling_factor_glandular_xz)
+
+
+
+
 
     cut_torso(build, settings)
     # Create a layer of  ~1 element from the chest, this is used later for meshing purposes
@@ -84,7 +78,7 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
                       0, settings.model.geometry.radius_nipple, tag=7)
 
     # Fuse duct/nipple with glandular tissue
-    build.fuse([(3, 3)], [(3, 7), (3,6)], tag=8)
+    build.fuse([(3, 2)], [(3, 7), (3,6)], tag=8)
     # Separate glandular from adipose tissue
     build.cut([(3, 1)], [(3, 8)], removeTool=False)
 
@@ -106,6 +100,16 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
 
 
 def cut_torso(build, settings: Settings):
+    # Build shape of torso
+    if settings.model.geometry.angle_nipple != 0:
+        rad_pi = settings.model.geometry.radius_breast*(1+settings.model.geometry.asym_p2*2) #variable radius for theta=pi
+        torso = build.addCylinder(0, -(1 / 2 * rad_pi / np.sin(
+            1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), -0.2,
+                          0, 0, 0.4,
+                          (1 / 2 * rad_pi / np.sin(
+                              1 / 2 * settings.model.geometry.angle_nipple / 180 * math.pi)), tag=3)
+    else:
+        torso = build.addBox(-0.5, 0, -0.5, 1, -1, 1, tag = 3)
 
     if settings.model.geometry.thickness_chest_wall > settings.model.mesh.ls_min:
         thickness_layer1 = settings.model.mesh.ls_min
@@ -117,17 +121,17 @@ def cut_torso(build, settings: Settings):
     build.dilate([(3, 4)], 0, 0, 0, scaling_layer, scaling_layer, scaling_layer)
 
     # Cut torso from breast shape
-    build.cut([(3, 1)], [(3, 2)], removeTool=False)
+    build.cut([(3, 1)], [(3, torso)], removeTool=False)
 
     # Get the mid-layer surface by intersection of the torso and the mid-volume
-    build.translate([(3, 2)], 0, thickness_layer1, 0)
+    build.translate([(3, torso)], 0, thickness_layer1, 0)
     build.intersect([(3, 4)], [(2, 12)], removeObject=True, removeTool=False)  # surftag = 15
 
     # Cut torso shape from glandular, forming an even layer of adipose tissue between chest and glandular
     # Also remove the torso shape
     if thickness_layer1 != settings.model.geometry.thickness_chest_wall:
-        build.translate([(3, 2)], 0, settings.model.geometry.thickness_chest_wall - thickness_layer1, 0)
-    build.cut([(3, 3)], [(3, 2)], removeTool=True)
+        build.translate([(3, torso)], 0, settings.model.geometry.thickness_chest_wall - thickness_layer1, 0)
+    build.cut([(3, 2)], [(3, torso)], removeTool=True)
 
 
 def construct_bspline_points(build, settings: Settings, n_points_u: int, n_points_v: int) -> np.ndarray[Any, np.dtype[np.int_]]:
@@ -276,7 +280,7 @@ def build_mesh(mesh, tissues: TissueParts, settings: Settings):
             element_type, elements, nodes = mesh.getElements(getattr(tissues, name).dim, getattr(tissues, name).tags)
             num_nodes = mesh.getElementProperties(element_type[0])[3]
             nodes = nodes.reshape(-1, num_nodes)
-        if settings.material.tumor.tumorous:
+        if settings.material.tumor.tumorous and name != 'skin':
             elements_nontumor = []
             nodes_nontumor = []
             for i, elem in enumerate(elements):
