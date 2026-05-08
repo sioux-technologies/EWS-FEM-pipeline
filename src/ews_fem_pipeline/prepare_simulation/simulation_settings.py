@@ -230,8 +230,8 @@ class MaterialSettings(ExtendedBaseModel):
         density=911,
         bulk_modulus=425000,
         pressure_model="default",
-        k1=2.5,
-        k2=14.5,
+        k1=4000,
+        k2=12.5,
         gamma=0,
         kappa=0,
         c=300,
@@ -244,7 +244,7 @@ class MaterialSettings(ExtendedBaseModel):
         coef2=195,
     )
     tumor: MRTumorProperties = MRTumorProperties(
-        tumorous=True,
+        tumorous=False,
         density=1041,
         bulk_modulus=425000,
         pressure_model="default",
