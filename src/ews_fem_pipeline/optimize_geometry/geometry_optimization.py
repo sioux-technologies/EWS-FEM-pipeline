@@ -88,7 +88,7 @@ def run_breast_model(parameter_locations, params, folder, title) -> Path:
         # Generate mesh, run, and generate displaced mesh .obj file
         mesh_files = generate.callback([filepath_out_toml])
         feb_files = fem.callback(mesh_files, jobs=0)
-        obj_files = feb_to_3d(feb_files[0])
+        obj_files = feb_to_3d(feb_files[0], remove_chest=True)
     return obj_files
 
 def compare_geometries(breast_model_geom: pv.PolyData|pv.UnstructuredGrid, breast_target_geom: pv.PolyData,
@@ -197,5 +197,5 @@ def run_optimization(toml_filepath: Path):
 
 if __name__ == "__main__":
     target_path = (
-        Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization_test_settings.toml"))
+        Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization\testtest.toml"))
     run_optimization(target_path)
