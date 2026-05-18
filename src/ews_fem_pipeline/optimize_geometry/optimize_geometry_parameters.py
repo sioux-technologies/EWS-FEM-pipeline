@@ -17,7 +17,7 @@ def optimize_geometry_parameters(toml_filepath: Path):
 
     # Prepare settings and output files
     target_path = Path(toml_filepath.parent / optimization_settings.filesettings.target_mesh_filename)
-    title = target_path.stem  # TODO check filenames
+    title = target_path.stem
     if optimization_settings.filesettings.output_folder is None:
         output_folder = target_path.parent
     else:
@@ -54,7 +54,7 @@ def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid) -> pv.PolyData:
     skin_segmented = skin_segmented.extract_surface(algorithm=None)
     return skin_segmented
 
-def generate_projection_points(model_skin: pv.PolyData, n_points=10, n_slices = 10):
+def generate_projection_points(model_skin: pv.PolyData, n_points=10, n_slices = 10) -> np.ndarray:
     points = np.empty((0, 2))
     for phi in np.linspace(-1 / 2 * np.pi, 1 / 2 * np.pi, n_slices, endpoint=False):
         intsect = model_skin.slice(origin=(0, 0, 0), normal=(np.cos(phi), 0, np.sin(phi)))
@@ -65,7 +65,7 @@ def generate_projection_points(model_skin: pv.PolyData, n_points=10, n_slices = 
         points = np.append(points, np.outer(ws, np.array([np.sin(phi), -1*np.cos(phi)])), axis=0)
     return points
 
-def project_front(surface: pv.PolyData, points: np.ndarray):
+def project_front(surface: pv.PolyData, points: np.ndarray) -> np.ndarray:
     """Finds the intersection between the lines given by projecting the projection points in the y-direction and the
     surface"""
     intercepts = []
@@ -139,7 +139,7 @@ def compare_geometries(breast_model_geom: pv.PolyData|pv.UnstructuredGrid, breas
     dx = (breast_target_geom.points[inds] - projected_model).flatten()
     return dx
 
-def closest_points(poly, points):
+def closest_points(poly: pv.PolyData, points: np.ndarray):
     tree = scikdtree(poly.points)
     distances, indices = tree.query(points)
     return distances, indices
@@ -154,7 +154,6 @@ def show_results(filepath_model_obj: Path, skin_segmented: pv.PolyData):
     plotter.add_mesh(model_skin_final, opacity=0.8, color='yellow')
     plotter.add_mesh(skin_segmented, opacity=0.8, color='blue')
     plotter.show()
-
 
 def prepare_data(filepath) -> pv.PolyData:
     # Import target surface and determine center (nipple)
