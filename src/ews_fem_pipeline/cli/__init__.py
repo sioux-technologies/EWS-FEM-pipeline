@@ -12,6 +12,7 @@ from ews_fem_pipeline.prepare_simulation import (
     write_to_feb,
 )
 from ews_fem_pipeline.run_simulation import FEBioRunner
+from ews_fem_pipeline.optimize_geometry import optimize_geometry_parameters
 
 
 @click.group(
@@ -247,3 +248,25 @@ def run(input_files: tuple[Path, ...], jobs: int):
     feb_files = generate.callback(input_files)
     output_files = fem.callback(feb_files, jobs)
     convert.callback(output_files)
+
+@cli_main.command()
+@click.argument(
+    "input_files",
+    nargs=-1,
+    type=click.Path(
+        exists=False,
+        file_okay=True,
+        dir_okay=False,
+        writable=False,
+        readable=True,
+        resolve_path=True,
+        allow_dash=False,
+        path_type=Path,
+        executable=False,
+    ),
+)
+def optimize(input_files: tuple[Path, ...]):
+    """ Runs optimization of parameters of model to minimize distance with .obj file.
+    Optimization runs for all optimization files provided. """
+    for file in input_files:
+        optimize_geometry_parameters(file)
