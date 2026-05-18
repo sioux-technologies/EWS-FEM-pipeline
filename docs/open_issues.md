@@ -23,6 +23,9 @@ These are split into (priority) model improvements and others.
     This has negligible effects on the mechanical properties of the breast but may play an important role in the detection of skin anomalies related to cancer.
     The cameras in the experimental set-up ought to be trained to detect such features, therefore implementing surface properties in the simulation is a useful addition to the pipeline.
     Evidently, such features should be added in the Blender environment where object rendering is central.
+- **FEM issues**
+    Currently, the FEM model is limited in, among others, size and softness due to FEM problems in models with large size or low stiffness.
+    FEBio will run into negative jacobians, and exit after a number of attempts. This is at least partially caused by the large deformations in the breast combined with FEBio's inability to remesh, causing heavily distorted elements after a while. This is a major issue and should be looked into further. 
 
 ## Miscellaneous (low priority)
 - **Speed-up**.
