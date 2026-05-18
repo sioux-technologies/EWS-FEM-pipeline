@@ -3,12 +3,46 @@ import logging
 import pyvista as pv
 from scripts.load_data import load_obj_file, point_clicker
 from ews_fem_pipeline.prepare_simulation import write_settings_to_toml, load_settings_from_toml
-from ews_fem_pipeline.cli import generate, fem
 from ews_fem_pipeline.convert_simulation.feb_to_3d import feb_to_3d
 from ews_fem_pipeline.optimize_geometry.optimization_settings import *
 from scipy.spatial import KDTree as scikdtree
 
-def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid):
+logger = logging.getLogger(__name__)
+
+def optimize_geometry_parameters(toml_filepath: Path):
+    assert toml_filepath.suffix == '.toml', "Optimization settings file must be .toml"
+
+    optimization_settings = load_optimization_settings_toml(toml_filepath)
+    parameter_locations = optimization_settings.get_model_parameters()
+
+    # Prepare settings and output files
+    target_path = Path(toml_filepath.parent / optimization_settings.filesettings.target_mesh_filename)
+    title = target_path.stem  # TODO check filenames
+    if optimization_settings.filesettings.output_folder is None:
+        output_folder = target_path.parent
+    else:
+        output_folder = target_path.parent / optimization_settings.filesettings.output_folder
+
+    # Prepare input data
+    skin_segmented = prepare_data(target_path)
+
+    # Extract and set LIMOLS settings and solver
+    settings_limols = optimization_settings.set_limols_settings()
+    settings_limols.n_residuals = 200 * 3  # 200 projection points in 3 dimensions
+    solver = LimolsSolver(settings_limols)
+
+    # Get and run initial step
+    parameter, expected_residual, step_size = solver.get_initial_step()
+    residual, model_obj = breast_analysis(parameter_locations, parameter, output_folder, title, skin_segmented)
+    parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
+
+    # 2nd to last step
+    while not solver.done:
+        residual, model_obj = breast_analysis(parameter_locations, parameter, output_folder, title, skin_segmented)
+        parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
+
+
+def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid) -> pv.PolyData:
     more_points = np.array(point_clicker(skin, message='Click points around breast area ', rotation=False))
     more_points[:, 1] = 0
     breast_circumf = pv.Spline(more_points, closed=True)
@@ -32,6 +66,8 @@ def generate_projection_points(model_skin: pv.PolyData, n_points=10, n_slices = 
     return points
 
 def project_front(surface: pv.PolyData, points: np.ndarray):
+    """Finds the intersection between the lines given by projecting the projection points in the y-direction and the
+    surface"""
     intercepts = []
     for point in points:
         projection_point = surface.ray_trace([point[0], 1, point[1]], [point[0], -1, point[1]], first_point=True)[0]
@@ -42,19 +78,16 @@ def project_front(surface: pv.PolyData, points: np.ndarray):
             pass
     return np.array(intercepts)
 
-def write_settings(parameter_locations, params, filepath_out_toml, settings_file: Path = None) -> Path:
-        # params: np.ndarray, folder, title, settings_file: Path = None)-> Path:
+def write_settings(parameter_locations, params, filepath_out_toml, settings_file: Path = None):
     if settings_file:
         #load alternate settings
         settings = load_settings_from_toml(settings_file)
     else:
         # use default settings
         settings = Settings()
-
     #set fixed settings for this problem
     settings.material.tumor.tumorous = False
     settings.simulation.control_step2.time_steps = float(0) #no dynamic steps
-
     # set values for given parameters
     for location, value in zip(parameter_locations, params):
         obj = settings
@@ -66,8 +99,7 @@ def write_settings(parameter_locations, params, filepath_out_toml, settings_file
     # Write to file
     write_settings_to_toml(filepath=filepath_out_toml, settings=settings)
 
-def breast_analysis(parameter_locations, parameter, folder, title, skin):
-        # params, folder, title, skin):
+def breast_analysis(parameter_locations: dict, parameter: np.ndarray, folder: Path, title: str, skin: pv.PolyData):
     # Run FEM model with given input parameters
     breast_model_obj = run_breast_model(parameter_locations, parameter, folder, title)
     # Load resulting model surface
@@ -76,11 +108,12 @@ def breast_analysis(parameter_locations, parameter, folder, title, skin):
     residuals = compare_geometries(breast_surface, skin)
     return residuals, breast_model_obj
 
-def run_breast_model(parameter_locations, params, folder, title) -> Path:
+def run_breast_model(parameter_locations: dict, params: np.ndarray, folder: Path, title: str) -> Path:
     output_title = '-'.join(f'{1000*param:.0f}' for param in params)
     if (Path(folder/'defaults'/output_title).with_suffix('.obj')).is_file():
         obj_files = Path(folder/'defaults'/output_title).with_suffix('.obj')
     else:
+        from ews_fem_pipeline.cli import generate, fem #circumvent circular import
         # Write parameters to settings file
         filepath_out_toml = (folder/title/output_title).with_suffix('.toml')
         write_settings(parameter_locations, params, filepath_out_toml)
@@ -88,7 +121,9 @@ def run_breast_model(parameter_locations, params, folder, title) -> Path:
         # Generate mesh, run, and generate displaced mesh .obj file
         mesh_files = generate.callback([filepath_out_toml])
         feb_files = fem.callback(mesh_files, jobs=0)
+        if len(feb_files)<1:raise Exception('FEBio did not return result, terminating optimization')
         obj_files = feb_to_3d(feb_files[0], remove_chest=True)
+
     return obj_files
 
 def compare_geometries(breast_model_geom: pv.PolyData|pv.UnstructuredGrid, breast_target_geom: pv.PolyData,
@@ -158,44 +193,3 @@ def find_area_normal(surface: pv.PolyData | pv.UnstructuredGrid, radius: float, 
     nipple_normal = np.average(search_area.compute_normals()['Normals'], axis=0)
     nipple_normal = nipple_normal / np.linalg.norm(nipple_normal)
     return nipple_normal
-
-
-
-def run_optimization(toml_filepath: Path):
-        # target_obj: Path, output_folder: Path | None = None, params_0: np.ndarray = np.array([0.07, 0, 0, 0, 22.5])):
-    optimization_settings = load_optimization_settings_toml(toml_filepath)
-    parameter_locations = optimization_settings.get_model_parameters()
-
-    # Prepare settings and output files
-    target_path = Path(toml_filepath.parent/optimization_settings.filesettings.target_mesh_filename)
-    title = target_path.stem    #TODO check filenames
-    if optimization_settings.filesettings.output_folder == None:
-        output_folder = target_path.parent
-    else:
-        output_folder = target_path.parent/optimization_settings.filesettings.output_folder
-
-    # Prepare input data
-    skin_segmented = prepare_data(target_path)
-
-    # Extract and set LIMOLS settings and solver
-    settings_limols = optimization_settings.set_limols_settings()
-    settings_limols.n_residuals = 200*3 #200 projection points in 3 dimensions
-    solver = LimolsSolver(settings_limols)
-
-    # Get and run initial step
-    parameter, expected_residual, step_size = solver.get_initial_step()
-    residual, model_obj = breast_analysis(parameter_locations, parameter, output_folder, title, skin_segmented)
-    parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
-
-    # 2nd to last step
-    while not solver.done:
-        residual, model_obj = breast_analysis(parameter_locations, parameter, output_folder, title, skin_segmented)
-        parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
-
-    # show resulting meshes to compare
-    show_results(model_obj, skin_segmented)
-
-if __name__ == "__main__":
-    target_path = (
-        Path(r"C:\Users\stormf\PycharmProjects\EWS-FEM-pipeline\optimization\testtest.toml"))
-    run_optimization(target_path)
