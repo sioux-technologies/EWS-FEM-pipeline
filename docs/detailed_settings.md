@@ -21,13 +21,10 @@ The two parameters are:
     Though, one should be careful: The quality of first order meshes is far too inadequate for FEM simulation at this scale and the user is strongly discouraged for genuine use.
 
 ### Geometry
-Within the `[model.geometry]` fields, there is one setting that allows for change of the adipose rectangle, attached to the back of the quarter circle (see the sketch in the [material section of the main readme](../README.md#geometry)):
+- `thickness_chest_wall: float = 0.005 [meters]`: Sets the thickness of layer of adipose tissue between the chest and the glandular tissue.
+    Typically, `thickness_chest_wall` does not need to be changed, as this a merely a FEM construction to apply the boundary conditions, but it cannot be too close to maximum mesh size `ls_max`.
+- `radius_nipple:float = 0.0075`: Radius of the nipple duct. The nipple is a sphere with radius `radius nipple` with its center 0.005 m below the breast surface. Should ALWAYS be significantly higher than `0.005`, or the nipple will disappear under the surface.
 
-- `thickness_chest_wall: float = 0.002 [meters]`: Sets the thickness of the rectangle attached to the chest, enclosed by the points `A`, `C`, `D` and `E`.
-    When the 2D model is revolved, the rectangle transforms into a cylinder, which is subject to the boundary conditions of the parabolic jump.
-    In contrast to the other geometry parameters, `thickness_chest_wall` does not scale with the `radius`.
-    In the figure, `thickness_chest_wall` corresponds with `d`.
-    Typically, `thickness_chest_wall` does not need to be changed, as this a merely a FEM construction to apply the boundary conditions, but one should stay within the range 0.0015 < `thickness_disk` < 0.005.
 
 ## Simulation
 The entire FEBio simulation consists of two parts which run after each other.

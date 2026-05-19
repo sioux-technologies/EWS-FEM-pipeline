@@ -149,55 +149,32 @@ The meshing contains four parameters, for which one is strictly free to adjust; 
 The default value is given after the equal sign.
 The adjustable setting is:
 
-- `density: float = 195`: Sets the mesh size.
-    The number is a measure for the number of nodes per unit of length; a larger number implies a denser mesh.
-    The default value is sufficiently dense for a representative animation, while also being fast enough for a trial simulation.
-    Currently, this one takes about half an hour.
-    For a quick test, a coarser mesh density of ~100 is advised, which takes about number of minutes.
-    For a very dense mesh, we advise a density of ~260, which lasts several hours.
-    ***OPEN ISSUE: for some mesh realizations, some elements present anomalies, known as*** *inverted elements* ***which results in a faulty mesh.
-    When this happens, the pipeline skips this particular simulation and continues with the correct meshes.
-    The faulty mesh can be averted by picking a slightly different mesh density and rerun the `run` command for the faulty cases.***
+- `ls_max: float = 0.005`: the maximum element size in the mesh in meters. This mesh size can be adjusted slightly, but large values (>0.0075) will result in a distorted nipple shape.
 
 #### Geometry
-To visualize the geometry, we plot a cross-section of the breast in the figure below.
-The entire breast is made of three shapes which partially intersect.
-The overall shape of the breast is 1) a quarter circle centered at point `A(0,0)` and passing through `B(R,0)` and `C(0,R)` with `R` the radius; 2) a rectangle of size `d X R` with corner points `A(0,0)`, `C(0,R)`, `D(-d,R)` and `E(-d,0)`; 3) an ellipse passing through `H`, `G` and `F`, which is parameterized by `a`, `b` and `c`.
-The rectangle acts as a wall which connects the breast to the chest wall.
-This rectangle is subject to boundary conditions which allow the breast to move.
-The shapes intersect each other at specific points `I`, and `K` (and others which are not relevant), which segment the breast into two regions indicted by the coloured regions and enclosed by solid lines; the dashed lines are only here for construction purposes and are removed afterwards.
-The purple region is enclosed by `A`, `L`, `B`, `G` ,`I`, `J` and `K`; the yellow region by `A`, `K`, `J`, `I`, `C`, `D` and `E`.
-The purple region is made of glandular tissue, where the protruding section enclosed by `B`, `G` and `I` is the nipple.
-While the second region is of adipose type.
-The 3D model is constructed by revolving the cross-section 360 degrees around the line `EG`.
 
-![Cross section breast geometry](images/breast_crossesction.png "Cross section breast geometry")
+![Breast Geometry](../images/breast_geometry_full.png "Breast construction")
 
-In total there are five settings which parameterize the geometry, where four of them are relevant here:
+In total there are nine settings which parameterize the geometry, where seven of them are relevant here:
 
-- `radius: float = 0.07 [meters]`: Sets the radius of the breast, all parameters listed here are scaled with the radius.
-    In the figure, `radius` corresponds with `R`.
-    The `radius` should not be set too small, else we run into meshing issues.
-    So typically 0.05 < `radius` < 0.15.
-- `left_relative_position_ellipse: float = 0.04 [dimensionless]`: Sets the relative horizontal position of point `F`, left of the chest where the ellipse starts.
-    This point acts as a placeholder for the left side of the ellipse and is removed later.
-    This parameter largely sets the curvature of the ellipse and consequently the ratio of glandular/adipose tissue.
-    In the figure `left_relative_position_ellipse` corresponds with `a`.
-    For values, we advise 0 < `left_relative_position_ellipse` < 0.2.
-- `right_relative_position_ellipse: float = 0.05 [dimensionless]`: This parameter sets the position of the nipple, i.e., the relative horizontal position of `G`, scaled with the radius.
-    In the figure `right_relative_position_ellipse` corresponds with `b`.
-    For values, we suggest 0.03 < `right_relative_position_ellipse` < 0.07.
-- `center_relative position_ellipse: float = 0.3 [dimensionless]`: Sets the vertical position of `H`, the center point of the ellipse (the horizontal position of `H` is captured by `left_relative_position_ellipse`and `right_relative_position_ellipse`).
-    In particular, increasing this parameter will shift the vertical position of`H` down causing a sharper angle in `G`.
-    We note that setting `center_relative position_ellipse` = 0 turns `G` into right-angled angle, making the nipple a perfect hemisphere.
-    Therefore, we advise 0.05 < `center_relative position_ellipse` < 1.
+- `radius: float = 0.07 [meters]`: Sets the basic radius of the breast. If `p_1-3` are set to 0 this is the radius of the entire breast. 
+- `angle_nipple: float = 22.5 [degrees]`: measure of the angle of the nipple with respect to the torso. The shape of the torso is dependent on this angle, as a larger angle_nipple is interpreted as the breast being further towards the side of the body, and therefore the curvature of the torso is sharper.
+The torso is approximated as a cylinder, and the radius of the cylinder is a function of `angle_nipple`.
+- Asymmetry parameters `asym_p1`, `asym_p2` and `asym_p3`. These parameters set the (asymmetric) shape of the breast from the front. Setting these to 0 will result in a perfectly round geometry.
+- `scaling_factor_y: float = 0.09`: Scaling factor of the glandular tissue with respect to the full breast shape in the y-direction.
+- `scaling_factor_xz: float = 0.09`: Scaling factor of the glandular tissue with respect to the full breast shape in the x- and z-direction.
+
+- The geometry is initiated by forming a breast shape based on the set of asymmetry parameters, which define a variable radius for the breast. A B-Spline surface is then fit to these point to form the breast shape. 
+Next, the shape of the torso is defined based on the parameter `angle_nipple`, upon which the torso shape is removed from the breast shape, forming a curved chest wall.
+- The glandular tissue is shaped by downscaling the breast volume by `scaling_factor_y` and `scaling_factor_xz`, and adding a cylinder and small sphere as the milk duct and nipple. 
+- Lastly, the nipple duct and nipple are formed and placed on the breast. 
 
 ### Material
 In this section, we delve into the material settings, which allows for control of the mechanical properties of the different tissues within the breast.
 We split this section in two, where we distinguish between the skin, adipose and glandular tissue; and the tumor.
 
-#### Skin, adipose & glandular
-For each non-tumorous tissue: skin, adipose, glandular, we assume the [Mooney-Rivlin](https://en.wikipedia.org/wiki/Mooney%E2%80%93Rivlin_solid) material type, which takes three adjustable parameters.
+#### Skin, glandular and tumor properties
+For the skin, glandular and tumor tissue, we assume the [Mooney-Rivlin](https://en.wikipedia.org/wiki/Mooney%E2%80%93Rivlin_solid) material type, which takes three adjustable parameters.
 Each tissue contains the same set of inputs, though of course different settings can be assigned per tissue.
 The default settings per tissue are listed in table below.
 
@@ -208,41 +185,47 @@ The default settings per tissue are listed in table below.
 - `coef2: float [Pa]`: Sets the coefficient of the second invariant in the Mooney-Rivlin material type.
 
 We stress that more information on the implementation of the Mooney-Rivlin model can be found in the [FEBio documentation](https://help.febio.org/docs/FEBioUser-4-7/UM47-4.1.2.9.html).
-Typical values for the non-tumorous materials properties are given in the table below.
+Typical values for the materials properties are given in the table below.
 For each value, one can deviate about 30% from the default.
 
 |           | `density` | `bulk_modulus` | `coef1` | `coef2` |
 |-----------|-----------|----------------|---------|---------|
 | skin      | 1100      | 480000         | 1200    | 1200    |
-| adipose   | 911       | 425000         | 109     | 106     |
 | glandular | 1041      | 425000         | 230     | 195     |
+| tumor     | 911       | 425000         | 109     | 106     |
+
+### Adipose properties
+The adipose tissue is modeled using the Holzapfel-Gasser-Ogden material type, which consists of a hyperelastic ground matrix with fiber reinforcement, to represent the collagenous ligaments in the breast.  
+The ground matrix (the actual adipose tissue) is described with 3 parameters
+- `density: float [kg/m^3]`: Sets the mass density.
+- `c: float [Pa]`: Sets the shear modulus for the ground matrix.
+- `bulk_modulus: float [Pa]`: Sets the bulk modulus for the ground matrix.
+    The `bulk_modulus` is a measure for the material compressibility, and for incompressible materials should be ~1000x the shear modulus.
+
+
+
+The fibers in the tissue are described with 4 parameters. The fiber direction in the model is given using the `spherical` approach available in FEBio, which assumes all fibers point towards a given center.
+Currently, the fiber center is always set to `1/2*radius_breast`.
+- `kappa: float [-]`: Sets the dispersion of the fibers (how much they disperse from the given fiber direction). 0 is no dispersion, 1/3 is full dispersion (and therefore isotropy).
+- `k1: float [Pa]`: Sets the shear modulus for the fibers.
+- `k2: float [Pa]`: Sets the exponential coefficient for the fibers.
+
 
 #### Tumor
 The tumor is programmed as a separate entity which can optionally be added to the breast model.
-Here, it is modelled as a perfect sphere with a pre-determined radius and position, and material properties depending on where in the breast the tumor is positioned.
-Therefore, some Mooney-Rivlin coefficients belonging to the tumor are tissue-dependent.
-It remains an open issue to improve upon the tissue geometry, see `open_issues.toml` within `docs`.
+Here, it is modelled as a sphere with a pre-determined radius and position, and all elements within that sphere are selected as tumor elements.
 The settings are the following:
 - `tumorous: bool = true`: If true, places a spherical tumor with the below listed parameters.
     If false, no tumor is placed and the code ignores these parameters.
-- `density: float = 1079 [kg/m^3]`: Sets the mass density of the tumor.
 - `radius: float  = 0.005 [meters]`: Sets the absolute radius [meters] of the spherical tumor.
     NOTE: Does not scale with the `radius` from the geometry settings.
 - `position: tuple(float) = (0.035, 0.04, 0) [meters]`: Sets the absolute position (x [m], y [m], z[m]) of the tumor in space.
     Also does not scale with the `radius` from the geometry settings.
-- `coef1_adipose: float = 971 [Pa]`: Sets the tumor coefficient of the first invariant when inside the adipose part.
-- `coef2_adipose: float = 939 [Pa]`: Sets the tumor coefficient of the second invariant when inside the adipose part.
-- `coef1_glandular: float = 920 [Pa]`: Sets the tumor coefficient of the first invariant when inside the glandular part.
-- `coef2_glandular: float = 870 [Pa]`: Sets the tumor coefficient of the second invariant when inside the glandular part.
 
 These settings are accompanied by a number of remarks which need to be taken in consideration for the user:
-- The four tumor Mooney-Rivlin coefficients are assigned to their distinct materials whenever the tumor is (partially) placed within that tissue type.
 - There are no settings for a 'tumorous skin', therefore the tumor can only be subcutaneous.
 - Currently, no checks are implemented that verify whether the tumor is in fact inside the breast.
     It is up to user to pick reasonable values for the position and radius.
-- The presence of the tumor is coded by merely assigning different materials properties in space other than those of the adipose and glandular tissue.
-    In other words, the mesh is ignorant about the tumor.
-    Therefore, a sufficiently small mesh should be created such that the tumor's intricacies are adequately captured.
 - For the tumor's mechanical properties, one can deviate by about 30% from the default values.
 
 ### Simulation
