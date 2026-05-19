@@ -62,10 +62,6 @@ def build_geometry(build, mesh_parts: MeshParts, settings: Settings):
                  b=settings.model.geometry.scaling_factor_glandular_y,
                  c=settings.model.geometry.scaling_factor_glandular_xz)
 
-
-
-
-
     cut_torso(build, settings)
     # Create a layer of  ~1 element from the chest, this is used later for meshing purposes
     # make sure the space between this layer and the glandular tissue is large enough
@@ -210,12 +206,9 @@ def assign_tissues(build, tissues: TissueParts, settings: Settings):
     glandular_surfs = list(build.getSurfaceLoops(glandular[0])[1][0])
     all_surfs, counts = np.unique(adipose_surfs+glandular_surfs, return_counts = True)
     outer_surfaces = all_surfs[counts == 1]
-    if settings.model.geometry.thickness_chest_wall > 0.004:
-        tissues.skin.tags = [outer_surfaces[1]]
-        tissues.chest.tags = [outer_surfaces[0]]
-    else:
-        tissues.skin.tags = [outer_surfaces[0]]
-        tissues.chest.tags = [outer_surfaces[1]]
+
+    tissues.skin.tags = [outer_surfaces[1]]
+    tissues.chest.tags = [outer_surfaces[0]]
 
 
 def build_mesh(mesh, tissues: TissueParts, settings: Settings):
@@ -246,59 +239,75 @@ def build_mesh(mesh, tissues: TissueParts, settings: Settings):
         else:
             mesh.optimize("HighOrder")
 
+    assign_elements(mesh, settings, tissues)
+
+
+def assign_elements(mesh, settings: Settings, tissues: TissueParts):
     # Here we loop over the tissues and assign the nodes, elements, etc. to the different fields.
     if settings.material.tumor.tumorous:
-        all_nodal_coords = gmsh.model.mesh.getNodes()[1].reshape(-1, 3)
-        distance_to_tumor = np.sqrt(np.sum(np.square(all_nodal_coords-np.array(settings.material.tumor.position)), axis=1))
-        in_tumor = distance_to_tumor < settings.material.tumor.radius
         elements_tumor = []
         nodes_tumor = []
-    for name in TissueParts.model_fields:
-        if getattr(tissues, name).dim == 2:  # noqa: PLR2004
-            getattr(tissues, name).type = settings.model.mesh.elem_type_surface
-        else:
-            getattr(tissues, name).type = settings.model.mesh.elem_type_volume
-
-        tags = getattr(tissues, name).tags
-
-        if isinstance(tags, list):
-            element_type = mesh.getElements(getattr(tissues, name).dim, tags[0])[0][0]
-            num_nodes = int(mesh.getElementProperties(element_type)[3])
-            elements = []
-            nodes = []
-            for tag in tags:
-                elements.append(mesh.getElements(getattr(tissues, name).dim, tag)[1][0])
-                nodes.append(mesh.getElements(getattr(tissues, name).dim, tag)[2][0])
-            elements = [int(item) for sublist in elements for item in sublist]
-            nodes = np.array([int(item) for sublist in nodes for item in sublist]).reshape(-1, num_nodes)
-        elif tags is None:
-            elements = []
-            nodes = []
-            #tissue does not exist or has no assignments
-            pass
-        else:
-            element_type, elements, nodes = mesh.getElements(getattr(tissues, name).dim, getattr(tissues, name).tags)
-            num_nodes = mesh.getElementProperties(element_type[0])[3]
-            nodes = nodes.reshape(-1, num_nodes)
-        if settings.material.tumor.tumorous and name != 'skin':
+        for name in TissueParts.model_fields:
+            centers, elements, nodes = get_tissue_contents(mesh, name, tissues, settings)
             elements_nontumor = []
             nodes_nontumor = []
-            for i, elem in enumerate(elements):
-                if np.sum(in_tumor[nodes[i, :]-1]) >= 1 / 2 * num_nodes:
+            for elem, node, center in zip(elements, nodes, centers):
+                if is_elem_tumorous(center, settings):
                     elements_tumor.append(elem)
-                    nodes_tumor.append(nodes[i, :])
+                    nodes_tumor.append(node)
                 else:
                     elements_nontumor.append(elem)
-                    nodes_nontumor.append(nodes[i, :])
+                    nodes_nontumor.append(node)
             getattr(tissues, name).elements = elements_nontumor
             getattr(tissues, name).nodes = nodes_nontumor
-        else:
+
+        tissues.tumor.elements = elements_tumor
+        tissues.tumor.nodes = nodes_tumor
+
+    else:
+        for name in TissueParts.model_fields:
+            centers, elements, nodes = get_tissue_contents(mesh, name, tissues, settings)
             getattr(tissues, name).elements = elements
             getattr(tissues, name).nodes = nodes
 
-    if settings.material.tumor.tumorous:
-        tissues.tumor.elements = elements_tumor
-        tissues.tumor.nodes = nodes_tumor
+
+def get_tissue_contents(mesh, name, tissues: TissueParts, settings: Settings):
+    if getattr(tissues, name).dim == 2:  # noqa: PLR2004
+        getattr(tissues, name).type = settings.model.mesh.elem_type_surface
+    else:
+        getattr(tissues, name).type = settings.model.mesh.elem_type_volume
+
+    tags = getattr(tissues, name).tags
+    if isinstance(tags, list):  # Tissue is made of multiple volumes
+        element_type = mesh.getElements(getattr(tissues, name).dim, tags[0])[0][0]
+        num_nodes = int(mesh.getElementProperties(element_type)[3])
+        elements = []
+        nodes = []
+        centers = []
+        # Retrieve elements for all volumes
+        for tag in tags:
+            elements.append(mesh.getElements(getattr(tissues, name).dim, tag)[1][0])
+            nodes.append(mesh.getElements(getattr(tissues, name).dim, tag)[2][0])
+            centers.append(mesh.getBarycenters(element_type, tag, fast=False, primary=True))
+        elements = [int(item) for sublist in elements for item in sublist]
+        nodes = np.array([int(item) for sublist in nodes for item in sublist]).reshape(-1, num_nodes)
+        centers = np.array([item for sublist in centers for item in sublist]).reshape(-1, 3)
+    elif tags is None:  # tissue does not exist or has no assignments
+        elements = []
+        nodes = []
+        centers = []
+    else:  # Tissue consists of one volume
+        element_type, elements, nodes = mesh.getElements(getattr(tissues, name).dim, tags)
+        centers = mesh.getBarycenters(getattr(tissues, name).dim, tags).reshape(-1, 3)
+        num_nodes = mesh.getElementProperties(element_type[0])[3]
+        nodes = nodes.reshape(-1, num_nodes)
+    return centers, elements, nodes
+
+def is_elem_tumorous(center: list, settings: Settings) -> bool:
+    if np.sqrt(np.sum(np.square(center - settings.material.tumor.position))) < settings.material.tumor.radius:
+        return True
+    else:
+        return False
 
 def prep_for_output(mesh_parts: MeshParts):
     #########################################
