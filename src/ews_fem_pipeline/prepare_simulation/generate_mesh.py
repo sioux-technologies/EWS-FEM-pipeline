@@ -248,16 +248,19 @@ def assign_elements(mesh, settings: Settings, tissues: TissueParts):
         elements_tumor = []
         nodes_tumor = []
         for name in TissueParts.model_fields:
-            centers, elements, nodes = get_tissue_contents(mesh, name, tissues, settings)
-            elements_nontumor = []
-            nodes_nontumor = []
-            for elem, node, center in zip(elements, nodes, centers):
-                if is_elem_tumorous(center, settings):
-                    elements_tumor.append(elem)
-                    nodes_tumor.append(node)
-                else:
-                    elements_nontumor.append(elem)
-                    nodes_nontumor.append(node)
+            if name == 'skin': #skin cannot be tumor tissue
+                centers, elements_nontumor, nodes_nontumor = get_tissue_contents(mesh, name, tissues, settings)
+            else:
+                centers, elements, nodes = get_tissue_contents(mesh, name, tissues, settings)
+                elements_nontumor = []
+                nodes_nontumor = []
+                for elem, node, center in zip(elements, nodes, centers):
+                    if is_elem_tumorous(center, settings):
+                        elements_tumor.append(elem)
+                        nodes_tumor.append(node)
+                    else:
+                        elements_nontumor.append(elem)
+                        nodes_nontumor.append(node)
             getattr(tissues, name).elements = elements_nontumor
             getattr(tissues, name).nodes = nodes_nontumor
 
