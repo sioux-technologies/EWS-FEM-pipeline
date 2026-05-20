@@ -1,6 +1,10 @@
+from pathlib import Path
+
 from limols import LimolsSolver
 import logging
 import pyvista as pv
+from pyvista import PolyData
+
 from ews_fem_pipeline.optimize_geometry.load_data import load_obj_file, point_clicker
 from ews_fem_pipeline.prepare_simulation import write_settings_to_toml, load_settings_from_toml
 from ews_fem_pipeline.convert_simulation.feb_to_3d import feb_to_3d
@@ -25,6 +29,7 @@ def optimize_geometry_parameters(toml_filepath: Path):
 
     # Prepare input data
     skin_segmented = prepare_data(target_path)
+    skin_segmented.save((output_folder/title).with_suffix(".obj"))
 
     # Extract and set LIMOLS settings and solver
     settings_limols = optimization_settings.set_limols_settings()
@@ -41,6 +46,21 @@ def optimize_geometry_parameters(toml_filepath: Path):
         residual, model_obj = breast_analysis(parameter_locations, parameter, output_folder, title, skin_segmented)
         parameter, expected_residual, step_size = solver.step(parameter, expected_residual, step_size, residual)
 
+    save_final_images(model_obj, output_folder, skin_segmented, title)
+    pass
+
+
+def save_final_images(model_obj: Path, output_folder: Path, skin_segmented: PolyData, title: str):
+    plotter = pv.Plotter(off_screen=True)
+    plotter.add_mesh(skin_segmented, color='blue', opacity=0.5)
+    model_skin_final = pv.read(model_obj)
+    center_breast(model_skin_final, nipple_coord=model_skin_final.points[np.argmax(model_skin_final.points[:, 1])])
+    plotter.add_mesh(model_skin_final, color='yellow', opacity=0.5)
+    plotter.view_xz(negative=True)
+    plotter.screenshot((output_folder / title / 'result_front').with_suffix(".png"), transparent_background=True)
+    plotter.view_yz()
+    plotter.screenshot((output_folder / title / 'result_side').with_suffix(".png"), transparent_background=True)
+
 
 def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid) -> pv.PolyData:
     more_points = np.array(point_clicker(skin, message='Click points around breast area ', rotation=False))
@@ -52,6 +72,7 @@ def extract_breast(skin: pv.PolyData | pv.UnstructuredGrid) -> pv.PolyData:
     skin_segmented = skin.select_interior_points(breast_volume, inside_out=True)
     skin_segmented = skin_segmented.threshold(0.5)
     skin_segmented = skin_segmented.extract_surface(algorithm=None)
+
     return skin_segmented
 
 def generate_projection_points(model_skin: pv.PolyData, n_points=10, n_slices = 10) -> np.ndarray:
@@ -192,3 +213,4 @@ def find_area_normal(surface: pv.PolyData | pv.UnstructuredGrid, radius: float, 
     nipple_normal = np.average(search_area.compute_normals()['Normals'], axis=0)
     nipple_normal = nipple_normal / np.linalg.norm(nipple_normal)
     return nipple_normal
+
