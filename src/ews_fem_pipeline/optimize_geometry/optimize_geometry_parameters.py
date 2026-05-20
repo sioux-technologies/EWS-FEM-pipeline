@@ -29,7 +29,7 @@ def optimize_geometry_parameters(toml_filepath: Path):
 
     # Prepare input data
     skin_segmented = prepare_data(target_path)
-    skin_segmented.save((output_folder/title).with_suffix(".obj"))
+    skin_segmented.save((output_folder/title/(title+'_segmented')).with_suffix(".obj"))
 
     # Extract and set LIMOLS settings and solver
     settings_limols = optimization_settings.set_limols_settings()
