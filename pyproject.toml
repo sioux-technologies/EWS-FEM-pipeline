@@ -16,6 +16,8 @@ keywords = []
 authors = [
   { name = "Pim Keizer", email = "pim.keizer@sioux.eu" },
   { name = "Casper Schippers", email = "casper.schippers@sioux.eu" },
+    { name = "Femke Storm", email = "femke.storm@sioux.eu" },
+
 ]
 requires-python = ">=3.13"
 classifiers = [
@@ -26,15 +28,14 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "click",
-  "tqdm",
-  "gmsh==4.13.1",
-  "numpy",
-  "pydantic",
-  "pyvista",
-  "toml",
-  "open3d",
-  "limols",
+  "click>=8.3.1",
+  "tqdm>=4.67.3",
+  "gmsh>=4.13.1",
+  "numpy>=2.4.3",
+  "pydantic>=2.12.5",
+  "pyvista>=0.47.1",
+  "toml>=0.10.2",
+  "limols>=2.0.0",
   "scipy>=1.17.1",
 ]
 
@@ -91,5 +92,4 @@ exclude_lines = [
 ]
 
 [tool.uv.sources]
-open3d = { path = "../../Downloads/open3d-0.19.0+03084ef-cp314-cp314-win_amd64.whl/open3d-0.19.0+03084ef-cp314-cp314-win_amd64.whl" }
 limols = { git = "https://bitbucket.org/limebv/dfo.git" }
