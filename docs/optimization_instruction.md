@@ -1,6 +1,7 @@
 # Optimization instruction
 In this document we explain how the optimization works and how the optimization settings file should be written.
 The optimization can be run by `fem-pipeline optimize optimization_settings_file.toml`
+
 ### Target mesh
 The optimization tries to minimize the distance between model output and a given target mesh. The target mesh should be of the .obj file type, and the surface should include the full breast surface, but minor gaps are allowed and can be dealt with. 
 The mesh can contain more than just the breast, as the first step in the optimization pipeline is to segment only the breast. 

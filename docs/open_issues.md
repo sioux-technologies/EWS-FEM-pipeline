@@ -25,7 +25,8 @@ These are split into (priority) model improvements and others.
     Evidently, such features should be added in the Blender environment where object rendering is central.
 - **FEM issues**
     Currently, the FEM model is limited in, among others, size and softness due to FEM problems in models with large size or low stiffness.
-    FEBio will run into negative jacobians, and exit after a number of attempts. This is at least partially caused by the large deformations in the breast combined with FEBio's inability to remesh, causing heavily distorted elements after a while. This is a major issue and should be looked into further. 
+    FEBio will run into negative jacobians, and exit after a number of attempts. 
+    This is at least partially caused by the large deformations in the breast combined with FEBio's inability to remesh, causing heavily distorted elements after a while. This is a major issue and should be looked into further. 
 
 ## Miscellaneous (low priority)
 - **Speed-up**.
