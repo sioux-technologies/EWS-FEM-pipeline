@@ -86,12 +86,7 @@ def feb_to_blender(filepath: Path):  # Input should be path to .vtk files
         shifted_grid = pv.read(file_path)
         displacement = shifted_grid.active_vectors  # Get displacement
 
-        # All surface vertices. Full displacement array follows order of points
-        # But surface displacement array needs to follow order of obj
-        surface_disp = displacement[vtk_idx]
-
-        # Now assign sorted indices to surface
-        surface_disp_obj[idx_time] = surface_disp[sort_idx]
+        # Save the mesh as .obj file for 1st step (gravity-deformed breast)
         if idx_time == 0:
             vtk_mesh_0 = vtk_mesh.copy()
             vtk_mesh_0.points = vtk_mesh.points+displacement
@@ -99,6 +94,13 @@ def feb_to_blender(filepath: Path):  # Input should be path to .vtk files
             pl.add_mesh(vtk_mesh_0)
             pl.export_obj(filename=filepath_obj_0)
             logger.info(f"Saving perturbed mesh as .obj file at: {filepath_obj_0}.")
+
+        # All surface vertices. Full displacement array follows order of points
+        # But surface displacement array needs to follow order of obj
+        surface_disp = displacement[vtk_idx]
+
+        # Now assign sorted indices to surface
+        surface_disp_obj[idx_time] = surface_disp[sort_idx]
 
 
 
