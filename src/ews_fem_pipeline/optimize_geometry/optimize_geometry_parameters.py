@@ -14,6 +14,7 @@ from scipy.spatial import KDTree as scikdtree
 logger = logging.getLogger(__name__)
 
 def optimize_geometry_parameters(toml_filepath: Path):
+
     assert toml_filepath.suffix == '.toml', "Optimization settings file must be .toml"
 
     optimization_settings = load_optimization_settings_toml(toml_filepath)
@@ -29,8 +30,8 @@ def optimize_geometry_parameters(toml_filepath: Path):
 
     # Prepare input data
     skin_segmented = prepare_data(target_path)
-    skin_segmented.save((output_folder/title/(title+'_segmented')).with_suffix(".obj"))
 
+    settings_fem = None
     # Extract and set LIMOLS settings and solver
     settings_limols = optimization_settings.set_limols_settings()
     settings_limols.n_residuals = 200 * 3  # 200 projection points in 3 dimensions
@@ -51,6 +52,8 @@ def optimize_geometry_parameters(toml_filepath: Path):
 
 
 def save_final_images(model_obj: Path, output_folder: Path, skin_segmented: PolyData, title: str):
+    skin_segmented.save((output_folder / title / (title + '_segmented')).with_suffix(".obj"))
+
     plotter = pv.Plotter(off_screen=True)
     plotter.add_mesh(skin_segmented, color='blue', opacity=0.5)
     model_skin_final = pv.read(model_obj)
