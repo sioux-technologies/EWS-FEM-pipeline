@@ -21,9 +21,8 @@ class LimolsUserInput(BaseModel):
 
 
 class FileSettings(BaseModel):
-    target_mesh_filename: str = 'target_mesh_filename'
-    output_folder: str = 'output_folder'
-    preloaded_meshes_folder: str = 'preloaded_meshes_folder'
+    target_mesh_filename: str = 'optimization_test_settings.toml'
+    output_folder: str = 'output_optimization'
 
 class RangeSettings(BaseModel):
     setting_name : str
@@ -39,11 +38,16 @@ class RangeSettings(BaseModel):
                 'xl':self.xl,
                 'xu':self.xu,}
 
+class ParameterSettings(BaseModel):
+    setting_name: str
+    x : float
+
 class OptimizationSettings(BaseModel):
     filesettings: FileSettings = FileSettings()
     limols: LimolsUserInput = LimolsUserInput()
     optimization_parameters: Dict[str, RangeSettings] = Field(
         default = RangeSettings(setting_name = 'radius_breast', x0 = 0.07, xl = 0.03, xu = 0.15))
+    # fixed_parameters: Dict[str, ParameterSettings] = Field()
 
     def get_limols_input_values(self):
         info_dict = {'setting_name':[],
@@ -61,8 +65,18 @@ class OptimizationSettings(BaseModel):
         info_dict = self.get_limols_input_values()
         limols_settings = LimolsSettings(**info_dict)
         for field in LimolsUserInput.model_fields:
+
             setattr(limols_settings, field, getattr(self.limols, field))
         return limols_settings
+
+    # def set_fem_settings(self) -> LimolsSettings:
+    #     fem_settings = Settings()
+    #     for parameter in self.fixed_parameters.values():
+    #             steps = (parameter.setting_name).split('.')
+    #             for attr in steps[:-1]:
+    #                 obj = getattr(obj, attr)
+    #             setattr(obj, steps[-1], float(parameter.x))
+
 
     def get_model_parameters(self):
         setting_names = []
