@@ -23,7 +23,7 @@ def optimize_geometry_parameters(toml_filepath: Path):
     # Prepare settings and output files
     target_path = Path(toml_filepath.parent / optimization_settings.filesettings.target_mesh_filename)
     title = target_path.stem
-    if optimization_settings.filesettings.output_folder is None:
+    if optimization_settings.filesettings.output_folder == 'none':
         output_folder = target_path.parent
     else:
         output_folder = target_path.parent / optimization_settings.filesettings.output_folder
