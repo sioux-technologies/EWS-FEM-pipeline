@@ -267,6 +267,10 @@ def run(input_files: tuple[Path, ...], jobs: int):
 )
 def optimize(input_files: tuple[Path, ...]):
     """ Runs optimization of parameters of model to minimize distance with .obj file.
-    Optimization runs for all optimization files provided. """
+    Optimization runs for all optimization files provided.
+
+    Each file should be in .toml format. See docs for exact format.
+
+    Testing can be done with supplied file optimization_test_settings.toml, which optimizes parameters r_breast and angle_nipple to synthetic torso in test_torso.obj. """
     for file in input_files:
         optimize_geometry_parameters(file)
