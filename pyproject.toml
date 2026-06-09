@@ -16,25 +16,27 @@ keywords = []
 authors = [
   { name = "Pim Keizer", email = "pim.keizer@sioux.eu" },
   { name = "Casper Schippers", email = "casper.schippers@sioux.eu" },
+    { name = "Femke Storm", email = "femke.storm@sioux.eu" },
+
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "click",
-  "tqdm",
-  "gmsh==4.13.1",
-  "numpy",
-  "pydantic",
-  "pyvista",
-  "toml",
+  "click>=8.3.1",
+  "tqdm>=4.67.3",
+  "gmsh>=4.13.1",
+  "numpy>=2.4.3",
+  "pydantic>=2.12.5",
+  "pyvista>=0.47.1",
+  "toml>=0.10.2",
+  "limols>=2.0.0",
+  "scipy>=1.17.1",
 ]
 
 [project.optional-dependencies]
@@ -88,3 +90,6 @@ exclude_lines = [
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
 ]
+
+[tool.uv.sources]
+limols = { git = "https://bitbucket.org/limebv/dfo.git" }

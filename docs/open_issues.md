@@ -13,17 +13,8 @@ These are split into (priority) model improvements and others.
     Some attempts have been made to implement such a framework, but without success.
     For future work, one can look into `gmsh` functions that calculate the jacobians of all elements in the mesh and check for negative values.
     `gmsh` [functions](https://gitlab.onelab.info/gmsh/gmsh/blob/gmsh_4_13_1/api/gmsh.py) that could be helpful here are `getElementQualities` and `getJacobians`, which are used in `gmsh` [tutorial x6](https://gitlab.onelab.info/gmsh/gmsh/blob/gmsh_4_13_1/tutorials/python/x6.py).
-- **The position of the nipple**.
-    The mesh knows a cylindrical symmetry along the long axis which comes from revolving around that same axis.
-    The position of the nipple is currently centered with the rotation axis, so that its position is strictly fixed.
-    Adjusting the position would imply more geometry options, but adopting a different mesh generation scheme which is less reliable on symmetry.
-- **Asymmetry of the breast**.
-    Naturally, a more realistic breast possesses some form of asymmetry for being it the left or right breast.
-    This would also imply a breaking of cylindrical symmetry like the prior bullet.
-    One can for example define a parameter which sets the degree of symmetry, with being symmetrical and being fully asymmetrical.
 - **Amorphously shaped tumors**.
     Currently, the tumors implemented in the model are represented by spheres with a predetermined position and radius.
-    In the model, this is accommodated by a Heaviside function, which effectively replaces the material properties of the apparent tissue with those of the tumor.
     As an open issue, we are interested in more amorphously shaped tumors, which are not bound by spheres.
     Naturally, the mesh needs to be locally dense enough to accommodate more intricate features.
     One can also think about locally changing the mesh so that it can accommodate the tumor better.
@@ -32,6 +23,10 @@ These are split into (priority) model improvements and others.
     This has negligible effects on the mechanical properties of the breast but may play an important role in the detection of skin anomalies related to cancer.
     The cameras in the experimental set-up ought to be trained to detect such features, therefore implementing surface properties in the simulation is a useful addition to the pipeline.
     Evidently, such features should be added in the Blender environment where object rendering is central.
+- **FEM issues**
+    Currently, the FEM model is limited in, among others, size and softness due to FEM problems in models with large size or low stiffness.
+    FEBio will run into negative jacobians, and exit after a number of attempts. 
+    This is at least partially caused by the large deformations in the breast combined with FEBio's inability to remesh, causing heavily distorted elements after a while. This is a major issue and should be looked into further. 
 
 ## Miscellaneous (low priority)
 - **Speed-up**.
@@ -57,7 +52,7 @@ These are split into (priority) model improvements and others.
     The back of the breast contains a mesh with distinct elements which are strictly unnecessary after the simulation has finished.
     This is because this part of the breast does not deform during the motion – this is a set boundary condition in the simulation.
     Removing these elements would in theory alleviate file memory, but it is unknown how much this would contribute.
-    At the same time, it is not trivial to determine which nodes should be discarded.
+    At the same time, it is not trivial to determine which nodes should be discarded. (In feb_to_3d, there is an option to remove the chest wall in the static output.)
     We mention it here as an open issue, though we admit this has low priority, unless memory load becomes significant.
 - **Disk mesh back of breast/breast protrudes chest**.
     For the boundary conditions, a disk of adipose tissue is attached to the back of the breast.

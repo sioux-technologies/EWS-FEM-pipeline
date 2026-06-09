@@ -1,0 +1,23 @@
+[filesettings]
+target_mesh_filename = "test_torso.obj"
+output_folder = "optimization_output"
+
+[limols]
+maxfev = 5
+rhoend = 1e-5
+p = 2
+
+[optimization_parameters.1]
+setting_name = "model.geometry.radius_breast"
+x0 = 0.07
+scale = 0.1
+xl = 0.04
+xu = 0.15
+
+[optimization_parameters.2]
+setting_name = "model.geometry.angle_nipple"
+x0=25
+scale = 90
+xl=0
+xu=45
+
