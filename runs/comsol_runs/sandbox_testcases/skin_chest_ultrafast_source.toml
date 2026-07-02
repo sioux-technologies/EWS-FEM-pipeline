@@ -1,0 +1,26 @@
+# Ultra-fast source case for skin-shell and chest-wall inspection.
+# This case intentionally disables the detailed glandular lobe generator and
+# falls back to the simple glandular seed/ellipse route in the COMSOL builder.
+
+[model.mesh]
+density = 120
+debug_view = false
+
+[material.tumor]
+tumorous = false
+
+[material.glandular.hetero]
+enabled = false
+auto_generate = false
+generator_mode = "fan"
+
+# Keep the nipple reference for the outer shape context.
+nipple = [ 0.0, 0.068, 0.0,]
+
+[material.adipose.hetero]
+enabled = true
+radial_center = [ 0.0, 0.0, 0.0,]
+radial_L = 0.05
+radial_alpha_c1 = 20.0
+radial_alpha_c2 = 15.0
+radial_alpha_rho = 25.0

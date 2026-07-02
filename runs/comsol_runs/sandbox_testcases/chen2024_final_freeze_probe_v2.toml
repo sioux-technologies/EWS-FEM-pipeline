@@ -1,0 +1,47 @@
+# Final freeze probe v2:
+# - move the whole fan another small step anterior relative to probe v1
+# - extend duct convergence further toward the nipple
+
+[model.mesh]
+density = 140
+debug_view = false
+
+[material.tumor]
+tumorous = false
+
+[material.glandular.hetero]
+enabled = true
+auto_generate = true
+generator_mode = "chen_2024_template_lobes"
+
+nipple = [ 0.0, 0.068, 0.0,]
+
+width = 0.0076
+amp_c1 = 70.0
+amp_c2 = 55.0
+amp_rho = 35.0
+seed = 42
+
+inner_ring_count = 6
+outer_ring_count = 12
+inner_ring_radius = 0.0135
+outer_ring_radius = 0.0270
+
+# Shift the full fan another step toward the nipple.
+inner_depth = 0.024
+outer_depth = 0.038
+
+# Pull the duct hub further anterior and allow the tips to approach the nipple more closely.
+droplet_length = 0.030
+hub_offset_y = 0.0065
+nipple_clearance_mid = 0.0105
+nipple_clearance_tip = 0.0060
+droplet_components = 2
+
+[material.adipose.hetero]
+enabled = true
+radial_center = [ 0.0, 0.0, 0.0,]
+radial_L = 0.05
+radial_alpha_c1 = 20.0
+radial_alpha_c2 = 15.0
+radial_alpha_rho = 25.0

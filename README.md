@@ -1,271 +1,283 @@
-# Early Warning Scan FEM Pipeline
+# EWS COMSOL Breast FEM Pipeline
 
-## Installation
-For using the pipeline we require both the python package and FEBio to be installed.
+Parametric COMSOL finite-element breast modelling pipeline for the Early Warning Scan (EWS) internship project.
 
-### Python package
-The python package requires python 3.11 or greater.
+The project builds and evaluates a reproducible breast FEM workflow for testing how anatomy, tissue layout, support structures, dynamic excitation, and tumor/lesion assumptions affect the mechanical response of the breast. The current focus is not a patient-specific final model, but a defensible COMSOL pipeline that can generate controlled model variants and compare their displacement and stress response.
 
-Here, we provide instructions on how to install the package.
-We recommend first to make a new environment, though this is strictly not necessary.
+## Current Scope
 
-The package can be installed directly from the GitHub repository:
-```commandline
-pip install git+https://github.com/sioux-technologies/EWS-FEM-pipeline
+The active model pipeline supports:
+
+- stage-based COMSOL case definitions using TOML files
+- parametrized chest-wall geometry and breast volume controls
+- realistic glandular reference layouts using lobe-based distributions
+- nipple and asymmetry sensitivity cases
+- Cooper-ligament support sensitivity cases
+- tumor/lesion sensitivity cases using stiffness-overlay regions
+- fixed-support acceleration pulse studies for dynamic response screening
+- automated export of summary metrics, time-series tables, and report figures
+
+The current dynamic reference input is a mild fixed-support acceleration pulse:
+
+- acceleration amplitude: `0.25g`
+- duration: `0.60 s`
+- mass damping: `alpha = 60 1/s`
+
+Higher acceleration amplitudes such as `0.50g`, `1.00g`, and `1.25g` are used as diagnostic excitation scouts, not as direct claims of a real jump.
+
+## Repository Layout
+
+- `README.md`
+  - startpunt voor nieuwe gebruikers: projectdoel, mapstructuur, actieve commands en outputbeleid
+
+- `src/ews_fem_pipeline_comsol/`
+  - active COMSOL pipeline package
+  - TOML loading, source-case preparation, Java builder generation, COMSOL batch execution, and post-processing
+
+- `runs/comsol_runs/`
+  - active COMSOL run definitions
+  - TOML files are kept for provenance
+  - generated build/solve artefacts are intentionally ignored by Git
+
+- `runs/comsol_testcases/`
+  - small settings templates and testcase references
+  - `all_settings.toml` gives a readable overview of the main editable settings
+  - `all_default_settings.toml` lists the raw default COMSOL pipeline settings
+
+- `analysis_output/comsol_pipeline/`
+  - lightweight report-oriented evaluation output
+  - summary CSV/Markdown tables and comparison plots
+
+- `docs/internship_deliverables/`
+  - current internship report and presentation deliverables
+
+- `docs/report_working_notes/`
+  - compact handover notes, literature overviews, parameter summaries, and model-justification documents
+
+- `docs/Literature/`
+  - literature PDFs used for model assumptions and report justification
+
+- `tools/`
+  - evaluation and plotting utilities, including COMSOL comparison plots
+
+- `pictures/`
+  - local model screenshots and animations used while preparing report figures
+
+## Where To Look First
+
+For new users, the most useful entry points are:
+
+1. `src/ews_fem_pipeline_comsol/README.md`
+   - explains the COMSOL package structure and pipeline order
+
+2. `runs/comsol_runs/geometry_stage5/`
+   - current dynamic/material/skin sensitivity cases
+   - most useful control route for recent model calibration work
+
+3. `runs/comsol_runs/geometry_stage6/`
+   - current tumor/lesion sensitivity TOMLs
+   - use only matched control/tumor pairs when interpreting tumor effects
+
+4. `analysis_output/comsol_pipeline/manual_postprocess/`
+   - manually exported COMSOL Derived Values CSVs for solve-only scouts
+   - useful when automated postprocess is slow or unreliable
+
+5. `docs/report_working_notes/`
+   - compact parameter overview, current limitations, literature overviews, and model-justification notes
+
+6. `docs/report_working_notes/model_justification/`
+   - model assumptions and literature justification notes
+
+7. `pictures/`
+   - screenshots and animations used to judge geometry and motion visually
+
+## Active Stage Structure
+
+The main COMSOL stage definitions are kept in:
+
+- `runs/comsol_runs/geometry_stage1`
+  - motion sanity baseline
+  - simple baseline geometry for validating the 0.25g dynamic input
+
+- `runs/comsol_runs/geometry_stage2_chestwall`
+  - chest-wall geometry sensitivity
+  - current report route uses transverse `xoffset055` curvature with volume preservation and auto-alignment
+
+- `runs/comsol_runs/geometry_stage3`
+  - realistic glandular reference spread
+  - used to move from simple glandular fraction tests toward lobe-based tissue distributions
+
+- `runs/comsol_runs/geometry_stage4`
+  - asymmetry and nipple-position sensitivity cases
+  - reference case is intentionally close to the Stage 3 realistic reference
+
+- `runs/comsol_runs/geometry_stage5`
+  - no-Cooper control and Cooper-ligament sensitivity cases
+  - current no-Cooper control is the most stable mechanical reference for dynamic amplitude scouting
+
+- `runs/comsol_runs/geometry_stage6`
+  - tumor/lesion sensitivity cases
+  - current route uses no-Cooper reference anatomy with tumor material overlay variants
+
+## Typical Commands
+
+Run these commands from the repository root in the configured `ews-fem` Anaconda environment.
+
+The expected environment is a local Anaconda/Conda environment with the package
+installed from this repository and the dependencies needed for TOML loading,
+mesh/source-case preparation, plotting, and COMSOL batch orchestration. COMSOL
+Multiphysics and a valid COMSOL license are required for build, solve, and
+post-processing commands. If you recreate the environment, first confirm that:
+
+- Python can import the local `src/` package, for example by running commands
+  from an environment where `src` is on `PYTHONPATH`;
+- the main Python packages are available: `numpy`, `pydantic`, `pydantic-core`,
+  `gmsh`, `matplotlib`, and `Pillow`; these are also listed in
+  `requirements.txt`;
+- `python -m ews_fem_pipeline_comsol --help` works from the repository root;
+- COMSOL batch is available through the configured TOML paths or system PATH;
+- the relevant TOML case points to an accessible COMSOL/JDK installation when Java compilation is enabled.
+
+For a temporary PowerShell session, the local source package can be exposed with:
+
+```powershell
+$env:PYTHONPATH = "$PWD\src"
 ```
-From here, all functionalities of the package should be installed and ready to use.
 
-#### Installation for developement
-When developing the pipeline, the package should be cloned to a local folder (potentially forked).
-The pacakge can then be installed in editable mode using pip:
-```commandline
-pip install -e .[dev]
+Build one or more COMSOL cases without solving:
+
+```powershell
+python -m ews_fem_pipeline_comsol build-only runs\comsol_runs\geometry_stage6\stage6_tumor_medium_upper_outer_surface_proximal_xoffset055_125g_solve_only_preview.toml
 ```
 
-### FEBio
-For running the FEBio simulations, the package requires FEBio to be available.
-This can be obtained by downloading pre-built binaries from the [FEBio website](https://febio.org/), of by building the sourcecode, which is available on [GitHub](https://github.com/febiosoftware/FEBio); building from source requires a C++ compiler, cmake, and preferably MKL. If FEBio is not installed in a default location, point the pipeline to the executable `febio4.exe` using the environment variable `FEBIO_PATH`.
+Run one or more full COMSOL cases:
 
-## Usage
-After installation of the Python package, the pipeline is ready to use.
-All the direct functionalities of the pipeline can be accessed from the terminal.
-Open any terminal and type `fem-pipeline`.
-If the installation was done successfully, the terminal lists five commands: one command which runs the full pipeline (`run`), three commands which represent the separate components of the pipeline (`generate`, `fem` and `convert`), and one command which allows the user to make an input file with default settings (`write-default-settings`).
-Information about the commands can also be retrieved from the terminal by adding `-h`.
-For example: `fem-pipeline generate -h`.
-
-In this section we elaborate on all five commands and provide instructions on how to call them.
-In the first subsection, we provide the very basics to run the full pipeline.
-The other subsections elaborate on the separate commands.
-
-### Getting started
-The main command within the pipeline is `run` which allows for high through-put data acquisition.
-The command takes two inputs:
-- `input_files: tuple(filepaths)`: the path(s) to where the input `.toml` file(s) is/are written.
-    Multiple files need to be space separated.
-- `-j: int = 0`: controls the parallelization settings.
-    For details on this input, we refer to the [`fem` simulation command](#fem-simulation).
-
-For the input, the pipeline makes use of `.toml` files, which can easily be accessed and written with a text editor.
-In the section [writing input files](#writing-input-files), we elaborate on how to write your own input file.
-For now the user can get started with a [default settings file](all_default_settings.toml) which we provided in this project.
-An example (with unphysical values to test installation) command would be:
-```commandline
-fem-pipeline run path/to/test_settings.toml
+```powershell
+python -m ews_fem_pipeline_comsol run runs\comsol_runs\geometry_stage5\stage5_reference_no_cooper_xoffset055_125g_solve_only_preview.toml
 ```
 
-After the simulation has finished, the `run` command generates two output files per `.toml` from which Blender can construct the simulation.
-To run the Blender animation, a number of manual steps need to be taken:
-1. Copy the **full** script from `run_animation_in_blender.py` (found at `ews_fem_pipeline/scripts`) and paste it in the Blender Python API.
-    The API can be found under `Scripting` in the main ribbon.
-    This step only has to be done the very first time using it.
-1. In the script, set the value for `filepath` equal to the full path of a single `.feb` file.
-    This file is generated in the same folder as where the equivalent `.toml` is written.
-    Evidently, only one animation can be run at a time.
-1. Run the script by pressing the "play" button at the top of the screen; alternatively use the shortcut `Alt + P`.
-1. Navigate to `Layout` in the top ribbon to observe the animation.
-    Optionally set `Rotation = 0 deg` to correctly orientate the model.
-    One can change the frame rate under the `Output` side screen to control the animation's play speed.
+Run post-processing only on existing solved results:
 
-From here, we will discuss the separate three commands that are contained within `run`.
-One can also access these commands separately.
-
-### Model generation
-The `generate` command generates the breast model, the corresponding mesh, as well as all simulation settings and writes them to the FEBio-compatible input `.feb` file.
-This command has one input:
-
-- `input_files: tuple(filepaths)` the path(s) to where the input `.toml` file(s) is/are written.
-    Multiple files need to be space separated.
-
-All (output) files bare the same name as the name of the `.toml` file.
-So make sure the name is somehow related to the settings or in any other way meaningful.
-
-The code loads the `.toml` file and assigns all settings.
-Note: only the non-default values need to be provided to the `.toml` file; all other settings are set to their default value.
-How to write a `.toml` file and the meaning of the different settings will be explained in the [settings section below](#settings).
-The code outputs a `.feb` file, which is the standard input file for FEBio.
-This will be written in the **same** folder as the `.toml` file.
-
-Finally, the code will also write a `.toml` file, which consist of all settings that ultimately runs the simulation.
-This is useful for when you wish to reproduce certain results.
-This will be written in a subdirectory `/output` of the `.toml` file folder with name `all_settings_<filename>.toml`.
-
-### FEM simulation
-This command runs one or multiple FEBio simulation(s), depending on the number of input files provided:
-
-- `input_files: tuple(filepaths)`: the path(s) to where the FEBio input `.feb` file(s) is/are written.
-    Multiple files need to be space separated.
-
-Optionally, the command allows for parallelization by providing the command with option `-j n`, where `n` can be `n>1` (external parallelization: running multiple FEBio instances, at max `n` parallel instances), `n=1` (internal parallelization: allowing FEBio to use multiple threads), and `n=0` (default: parallelization depends on the number of provided `.toml` files - maximum of four instances).
-More information on the `fem` command be found by typing `ews-fem-pipeline fem -h` to the terminal.
-
-As an example, three input `.feb` files are run simultaneously with default parallelization by typing in this particular order:
-```commandline
-ews-fem-pipeline fem path/to/input_1.feb path/to/input_2.feb path/to/input_3.feb
+```powershell
+python -m ews_fem_pipeline_comsol postprocess-only --mode global runs\comsol_runs\geometry_stage5\stage5_reference_no_cooper_xoffset055_125g_solve_only_preview.toml
 ```
-### Converting to Blender animation
-This command converts the output files from the FEBio simulation into Blender compatible files.
-By default, the output files, i.e., the `.vtk` files per time step (or optionally the `.xplt`), are printed to the sub-folder `/output` of the input file.
-The command converts the `.vtk` files into a single `.obj` file which contains information on the unperturbed mesh, and a single `.npy` file which contains the displacements of all nodes in the mesh at each time step.
-The command takes one argument:
-- `filepath`: the path(s) to where the FEBio input `.feb` file(s) is/are written.
-    Multiple files need to be space separated.
 
-The remains of this part need to be done manually; these instructions are given in ["getting started"](#getting-started).
+Regenerate lightweight evaluation plots and tables:
 
-### Writing input files
-The fifth commands allows the user to write input files with default settings using the command `write-default-settings`.
-The command takes a single input:
-- `filepath`: the path to where the input `.toml` is written.
+```powershell
+python tools\make_comsol_evaluation_plots.py
+```
 
-Here, the directory does not need to exist, the code can construct the path for you.
-This command outputs a `.toml` file consisting of all the default settings.
-In particular, this entails a model with a dense mesh, representative material properties and default simulation settings.
-Currently, running this simulation takes about half an hour.
+Check CLI options:
 
-You can customize your own input file by changing the relevant fields with a text editor.
-As mentioned in the `generate` section, lines with default values can be removed, only the non-default must remain.
-The code will supplement the missing settings with default ones.
-Needless to say, the fields, e.g., `[model.mesh]` or `[material.tumor]`, cannot be removed if one of those settings is kept; any other fields may be removed.
+```powershell
+python -m ews_fem_pipeline_comsol --help
+```
 
-## Settings
-The list of settings is quite extensive and gives the user a lot of control over the breast model and the FEM simulation.
-In a `.toml` file, all settings are grouped into one of three fields: `model`, `material` and `simulation`, see `all_default_settings.toml` as an example.
-Now, each field consists of multiple subfields which group different but related settings.
-Examples are the mesh (`[model.mesh]`) and the geometry (`[model.geometry]`) which fall under the `model` field.
-Under these subfields, settings can be changed by adjusting the number or string behind the equal sign.
-Note, bools, i.e., true and false, should be written with a lower case.
-In this README, we only discuss the settings that are interesting for the user to change.
-These are all listed in a second provided `.toml` file called [adjustable_default_settings.toml](adjustable_default_settings.toml).
-All other settings are discussed separately in [detailed_settings](/docs/detailed_settings.md).
-We remind the reader that a `.toml` file with default settings can be generated with the instructions [above](#writing-input-files).
+## Manual COMSOL Workflow
 
-### Model
-The model settings contain all settings related to the overall shape of the breast and its meshing properties; material properties are assigned in a subsequent section.
-Here we distinguish between the geometry, for the breast's shape, and mesh for the meshing.
+The normal route is to run COMSOL through the Python CLI. For diagnostic cases,
+it is also acceptable to run or inspect a case manually in COMSOL, especially
+when only a `result.mph` file or a quick Derived Values export is needed.
 
-#### Mesh
-The meshing contains four parameters, for which one is strictly free to adjust; two other less relevant settings are explained in [detailed_settings](/docs/detailed_settings.md).
-The default value is given after the equal sign.
-The adjustable setting is:
+Manual solve from an existing built/generated model:
 
-- `ls_max: float = 0.005`: the maximum element size in the mesh in meters. This mesh size can be adjusted slightly, but large values (>0.0075) will result in a distorted nipple shape.
+1. Open the generated or patched model in COMSOL:
+   - `runs/comsol_runs/<stage>/outputs/<case>/build/*generated_Model.mph`
+   - or `runs/comsol_runs/<stage>/outputs/<case>/build/*reuse_parameter_patched.mph`
 
-#### Geometry
+2. Confirm the model setup:
+   - geometry is present;
+   - expected domains/selections exist;
+   - Study 1 is the intended transient study;
+   - dynamic parameters match the TOML.
 
-![Breast Geometry](../images/breast_geometry_full.png "Breast construction")
+3. Run `Study 1` manually in COMSOL.
 
-In total there are nine settings which parameterize the geometry, where seven of them are relevant here:
+4. Save the solved model as:
+   - `runs/comsol_runs/<stage>/outputs/<case>/solve/<case>_result.mph`
 
-- `radius: float = 0.07 [meters]`: Sets the basic radius of the breast. If `p_1-3` are set to 0 this is the radius of the entire breast. 
-- `angle_nipple: float = 22.5 [degrees]`: measure of the angle of the nipple with respect to the torso. The shape of the torso is dependent on this angle, as a larger angle_nipple is interpreted as the breast being further towards the side of the body, and therefore the curvature of the torso is sharper.
-The torso is approximated as a cylinder, and the radius of the cylinder is a function of `angle_nipple`.
-- Asymmetry parameters `asym_p1`, `asym_p2` and `asym_p3`. These parameters set the (asymmetric) shape of the breast from the front. Setting these to 0 will result in a perfectly round geometry.
-- `scaling_factor_y: float = 0.09`: Scaling factor of the glandular tissue with respect to the full breast shape in the y-direction.
-- `scaling_factor_xz: float = 0.09`: Scaling factor of the glandular tissue with respect to the full breast shape in the x- and z-direction.
+5. Export manual Derived Values CSVs to:
+   - `analysis_output/comsol_pipeline/manual_postprocess/<case_name>/`
 
-- The geometry is initiated by forming a breast shape based on the set of asymmetry parameters, which define a variable radius for the breast. A B-Spline surface is then fit to these point to form the breast shape. 
-Next, the shape of the torso is defined based on the parameter `angle_nipple`, upon which the torso shape is removed from the breast shape, forming a curved chest wall.
-- The glandular tissue is shaped by downscaling the breast volume by `scaling_factor_y` and `scaling_factor_xz`, and adding a cylinder and small sphere as the milk duct and nipple. 
-- Lastly, the nipple duct and nipple are formed and placed on the breast. 
+Recommended manual Derived Values:
 
-### Material
-In this section, we delve into the material settings, which allows for control of the mechanical properties of the different tissues within the breast.
-We split this section in two, where we distinguish between the skin, adipose and glandular tissue; and the tumor.
+- Volume Maximum:
+  - `solid.disp` for maximum displacement magnitude
+  - `solid.mises` for maximum von Mises stress
 
-#### Skin, glandular and tumor properties
-For the skin, glandular and tumor tissue, we assume the [Mooney-Rivlin](https://en.wikipedia.org/wiki/Mooney%E2%80%93Rivlin_solid) material type, which takes three adjustable parameters.
-Each tissue contains the same set of inputs, though of course different settings can be assigned per tissue.
-The default settings per tissue are listed in table below.
+- Volume Average:
+  - `solid.disp` for average displacement magnitude
+  - `solid.mises` for average von Mises stress
 
-- `density: float [kg/m^3]`: Sets the mass density.
-- `bulk_modulus: float [Pa]`: Sets the bulk modulus in the Mooney-Rivlin material type.
-    The `bulk_modulus` is a measure for the material stiffness.
-- `coef1: float [Pa]`: Sets the coefficient of the first invariant in the Mooney-Rivlin material type.
-- `coef2: float [Pa]`: Sets the coefficient of the second invariant in the Mooney-Rivlin material type.
+Use the breast-domain selection for whole-breast metrics. For visual validation,
+also inspect a displacement surface plot and a von Mises stress plot at the peak
+motion/stress time.
 
-We stress that more information on the implementation of the Mooney-Rivlin model can be found in the [FEBio documentation](https://help.febio.org/docs/FEBioUser-4-7/UM47-4.1.2.9.html).
-Typical values for the materials properties are given in the table below.
-For each value, one can deviate about 30% from the default.
+## Output Policy
 
-|           | `density` | `bulk_modulus` | `coef1` | `coef2` |
-|-----------|-----------|----------------|---------|---------|
-| skin      | 1100      | 480000         | 1200    | 1200    |
-| glandular | 1041      | 425000         | 230     | 195     |
-| tumor     | 911       | 425000         | 109     | 106     |
+This repository is set up so Git tracks source code, TOML provenance, documentation, report notes, small summary tables, and selected lightweight figures.
 
-### Adipose properties
-The adipose tissue is modeled using the Holzapfel-Gasser-Ogden material type, which consists of a hyperelastic ground matrix with fiber reinforcement, to represent the collagenous ligaments in the breast.  
-The ground matrix (the actual adipose tissue) is described with 3 parameters
-- `density: float [kg/m^3]`: Sets the mass density.
-- `c: float [Pa]`: Sets the shear modulus for the ground matrix.
-- `bulk_modulus: float [Pa]`: Sets the bulk modulus for the ground matrix.
-    The `bulk_modulus` is a measure for the material compressibility, and for incompressible materials should be ~1000x the shear modulus.
+The following generated artefacts are intentionally not tracked:
 
+- COMSOL `.mph` files
+- COMSOL recovery/status files
+- generated build folders
+- generated solve folders
+- COMSOL configuration caches
+- FEBio/mesh exports such as `.vtk`, `.vtu`, `.feb`, `.xplt`, `.npy`, `.npz`, `.obj`, `.stl`
+- large local run outputs
 
+This keeps the GitHub repository usable while still preserving the case definitions needed to reproduce important runs.
 
-The fibers in the tissue are described with 4 parameters. The fiber direction in the model is given using the `spherical` approach available in FEBio, which assumes all fibers point towards a given center.
-Currently, the fiber center is always set to `1/2*radius_breast`.
-- `kappa: float [-]`: Sets the dispersion of the fibers (how much they disperse from the given fiber direction). 0 is no dispersion, 1/3 is full dispersion (and therefore isotropy).
-- `k1: float [Pa]`: Sets the shear modulus for the fibers.
-- `k2: float [Pa]`: Sets the exponential coefficient for the fibers.
+## Current Evaluation Outputs
 
+The most important lightweight evaluation folders are:
 
-#### Tumor
-The tumor is programmed as a separate entity which can optionally be added to the breast model.
-Here, it is modelled as a sphere with a pre-determined radius and position, and all elements within that sphere are selected as tumor elements.
-The settings are the following:
-- `tumorous: bool = true`: If true, places a spherical tumor with the below listed parameters.
-    If false, no tumor is placed and the code ignores these parameters.
-- `radius: float  = 0.005 [meters]`: Sets the absolute radius [meters] of the spherical tumor.
-    NOTE: Does not scale with the `radius` from the geometry settings.
-- `position: tuple(float) = (0.035, 0.04, 0) [meters]`: Sets the absolute position (x [m], y [m], z[m]) of the tumor in space.
-    Also does not scale with the `radius` from the geometry settings.
+- `analysis_output/comsol_pipeline/tier1_comparison`
+  - Stage 1 through Stage 5 comparison including the motion sanity baseline
 
-These settings are accompanied by a number of remarks which need to be taken in consideration for the user:
-- There are no settings for a 'tumorous skin', therefore the tumor can only be subcutaneous.
-- Currently, no checks are implemented that verify whether the tumor is in fact inside the breast.
-    It is up to user to pick reasonable values for the position and radius.
-- For the tumor's mechanical properties, one can deviate by about 30% from the default values.
+- `analysis_output/comsol_pipeline/tier1_comparison_without_stage1`
+  - anatomical comparison without the Stage 1 simple-geometry baseline
 
-### Simulation
-This section discusses the relevant simulation settings in detail.
-For the less important settings, we again refer to [detailed_settings](/docs/detailed_settings.md).
-Here we only touch upon the physical settings of the parabolic jump, the animation and the output.
+- `analysis_output/comsol_pipeline/stage5_dynamic_amplitude_scout`
+  - comparison of stable no-Cooper dynamic amplitude scouts
 
-### Parabolic Jump
-The field `[simulation.parabolic_jump]` has one setting which is relevant for the user to change.
-This setting calculates the trajectory of the parabolic jump after gravity has set in and writes them to the `.feb` file.
-The jump itself is derived from basic mechanics, where we assume a point mass subject to gravity and otherwise without friction.
-- `max_height : float = 0.01 [meters]`: Sets the maximum height of the parabolic jump in meters.
-    The initial velocity is calculated from the `max_height`.
-    Be sure not to set this number too large, else the solver has trouble with converging.
-    In that case, we advise the user to lower the value for `step_size` (and potentially `time_steps`) from `[simulation.control_step2]`.
+- `analysis_output/comsol_pipeline/stage6_fast_tumor_screening`
+  - early tumor-screening output; treat partial or zero-series cases carefully
 
-### Animation
-The field `[simulation.animation]` has one relevant setting, for which it is important that the user knows it exists.
-This setting informs FEBio at which specific time steps the output is printed to the `.vtk` files.
-This is important as Blender relies on fixed times in-between frames.
-- `fps : float = 40 [dimensionless]`: Sets the number of frames per second for the final animation.
-    This number ensures that the `.vtk` files are outputted at specific time steps according to the supplied value for `fps`.
-    It is important that the given value for `fps` in the settings agrees with the fps setting in Blender.
-    By default, it  is set to 40, in agreement with the EWS camera system.
-    Changing the `fps` will not affect the simulation time.
+## Interpretation Notes
 
-### Output
-The field `[simulation.output]` gives the user full control over what variables are outputted, and what output types are desired.
-We give the settings here:
-- `output_to_vtk : bool = true`: If set to true, the simulation outputs a `.vtk` file per time step.
-    The number of `.vtk` files is computed by the product of the total simulation time and the number of frames per second:`time_steps` x `step_size` x `fps`; the first two from `[simulation.control_step2]`) and the latter from `[simulation.curve_output]`.
-    **The pipeline does make further use of all `.vtk` files, so it strongly advised to set this parameter to true at all times**.
-    If set to false, the simulation outputs all results in a single `.xplt` file.
-    This file can only be read by FEBioStudio, therefore this is only useful for visual checks on the results.
-    **The pipeline makes no further use of the `.xplt` file, so printing it is strongly discouraged**.
-    Unfortunately, one cannot make FEBio output both `.xplt` and `.vtk` files in the same simulation.
-- `output_displacement : bool = true`: If set to true, the node displacements are written to the `.vtk` per time step (and optionally `.xplt`) file(s).
-     **The pipeline makes further use of the node displacements, so it strongly advised to set this parameter to true at all times**.
-- `output_stress : bool = false`: Setting this to true writes the elemental Cauchy stress to the `.vtk` (or `.xplt`) file(s).
-    This has no further use in the remainder of the pipeline.
-- `output_relative_volume : bool = false`: Setting this to true writes the relative volume to the `.vtk` (or `.xplt`) file(s).
-    This output is a measure for the increase/decrease in volume of the breast with respect  to its original size.
-    This has no further use in the remainder of the pipeline.
+Stage 1 is a motion sanity baseline and should not be interpreted as the final anatomical reference. It uses a simpler and larger baseline geometry, so its displacement and stress response are not directly comparable to the later anatomical stages.
+
+Stage 2 is the first fair anatomical geometry baseline. Stage 3 adds the realistic glandular reference spread. Stage 4 and Stage 5 references are intentionally close to Stage 3 because they serve as controls for asymmetry and Cooper-ligament sensitivity.
+
+Stage 6 tumor cases are currently designed as controlled sensitivity experiments. The initial tumor implementation is useful for studying whether a local stiffness perturbation changes surface displacement, landmark displacement, stress evolution, or local tumor-region response. It should not yet be over-interpreted as a patient-specific tumor reconstruction.
+
+## Useful Report Notes
+
+Start with:
+
+- `docs/report_working_notes/parameter_overview.md`
+- `docs/report_working_notes/current_limitations.md`
+- `docs/report_working_notes/pipeline_notes/comsol_pipeline_guide.md`
+- `docs/report_working_notes/model_justification/comsol_vs_febio_model_positioning.md`
+- `docs/report_working_notes/model_justification/tumor_overlay_plan.md`
+- `docs/report_working_notes/literature_overviews/material_parameter_literature_overview.md`
+
+## Main Limitations
+
+- The current COMSOL model is a controlled parametric model, not a patient-specific reconstruction.
+- Stage 1 is useful for motion validation but is not the final anatomical reference.
+- Cooper-ligament implementation is still a mechanical support sensitivity route, not a validated anatomical reconstruction.
+- Tumor/lesion modelling currently uses simplified size, location, and stiffness assumptions.
+- Long COMSOL runs can generate large local artefacts; use TOMLs and lightweight summaries as the primary tracked provenance.
+
+## Recommended Working Pattern
+
+1. Create or edit a TOML case in the relevant `runs/comsol_runs/geometry_stage*` folder.
+2. Run `build-only` first and inspect geometry, selections, and material settings in COMSOL.
+3. Only run full dynamics after geometry placement and assumptions are acceptable.
+4. Use `postprocess-only --mode global` first for quick solved-case checks.
+5. Run heavier surface/tumor post-processing only for cases that are worth keeping.
+6. Regenerate `analysis_output/comsol_pipeline` summaries for report-ready comparisons.

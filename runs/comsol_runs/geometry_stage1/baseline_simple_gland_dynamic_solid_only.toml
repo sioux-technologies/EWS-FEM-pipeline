@@ -1,0 +1,99 @@
+[pipeline]
+model_name = "breast_model_comsol"
+output_subdir = "outputs/output_baseline_simple_gland_dynamic_solid_only"
+
+[comsol]
+enabled = true
+batch_executable = "C:/Program Files/COMSOL/COMSOL64/Multiphysics/bin/win64/comsolbatch.exe"
+comsol_executable = "C:/Program Files/COMSOL/COMSOL64/Multiphysics/bin/win64/comsol.exe"
+configuration_dir = "comsol_configuration"
+mph_file = ""
+study = "std1"
+execute = true
+auto_build_from_java = true
+java_compile_first = true
+jdk_root = "C:/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot"
+extra_args = []
+java_compile_timeout_s = 300
+java_build_timeout_s = 0
+solve_timeout_s = 0
+postprocess_timeout_s = 900
+enable_skin_shell_physics = false
+enable_skin_solid_coupling_scaffold = false
+skin_shell_thickness_m = 0.0001
+dynamic_motion_mode = "prescribed_support_displacement"
+dynamic_motion_profile = "febio_parabolic_support"
+dynamic_motion_hold_s = 0.25
+enable_curved_chestwall = false
+chestwall_curve_depth_m = 0.0007
+compact_output = true
+chest_density_kg_m3 = 1050.0
+chest_youngs_modulus_pa = 10000.0
+chest_poissons_ratio = 0.49
+
+[source]
+base_case_toml = ""
+reuse_febio_prepare = true
+export_mesh_npz = true
+export_mesh_csv = true
+export_lobules_json = true
+notes = "Dynamic COMSOL baseline using simple gland geometry and solid-only physics to isolate chest/breast coupling without shell scaffolds."
+
+[source_case.model.mesh]
+ls = 0.005
+density = 140
+optimize = true
+debug_view = false
+debug_stop_after_mesh = false
+order = 2
+
+[source_case.model.geometry]
+radius = 0.07
+thickness_chest_wall = 0.002
+left_relative_position_ellipse = 0.4
+right_relative_position_ellipse = 0.05
+center_relative_position_ellipse = 0.3
+
+[source_case.model.geometry.asymmetry]
+enabled = false
+scale_y = 1.0
+scale_z = 1.0
+
+[source_case.material.skin]
+density = 1100.0
+bulk_modulus = 480000.0
+pressure_model = "default"
+coef1 = 1200.0
+coef2 = 1200.0
+
+[source_case.material.skin.hetero]
+enabled = false
+
+[source_case.material.adipose]
+density = 911.0
+bulk_modulus = 425000.0
+pressure_model = "default"
+coef1 = 109.0
+coef2 = 106.0
+
+[source_case.material.adipose.hetero]
+enabled = true
+radial_center = [ 0.0, 0.0, 0.0 ]
+radial_L = 0.05
+radial_alpha_c1 = 20.0
+radial_alpha_c2 = 15.0
+radial_alpha_rho = 25.0
+
+[source_case.material.glandular]
+density = 911.0
+bulk_modulus = 425000.0
+pressure_model = "default"
+coef1 = 230.0
+coef2 = 195.0
+
+[source_case.material.glandular.hetero]
+enabled = false
+auto_generate = false
+
+[source_case.material.tumor]
+tumorous = false

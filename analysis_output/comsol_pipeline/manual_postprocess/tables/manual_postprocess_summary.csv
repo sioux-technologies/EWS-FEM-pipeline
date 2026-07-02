@@ -1,0 +1,9 @@
+case_id,label,peak_max_displacement_mm,peak_max_displacement_time_s,peak_avg_displacement_mm,peak_avg_displacement_time_s,peak_max_vm_kpa,peak_max_vm_time_s,peak_avg_vm_kpa,peak_avg_vm_time_s
+stage5_no_skin_100g,No skin 1.00g,12.509606,1.355,6.477590,1.36,3.465150,1.36,0.709108,1.36
+stage5_no_skin_125g,No skin 1.25g,14.233234,1.355,7.336728,1.36,3.923849,1.36,0.804798,1.355
+stage5_volumetric_skin_125g,Volumetric skin 1.25g,5.933592,1.4,3.401142,1.4,51.629797,1.395,1.378928,1.4
+stage5_volumetric_skin_soft_interior_125g,Vol. skin + soft interior 1.25g,10.897359,1.445,5.900392,1.445,72.381945,1.445,1.800749,1.445
+full_gland_088kPa,Vol. skin 88 kPa + soft interior 1.25g,24.838000,1.375,13.701000,1.38,44.308000,1.38,1.303700,1.38
+01mm_skin_soft_interior,0.1 mm soft skin + soft interior 1.25g,60.032000,1.42,27.200000,1.415,44.583000,1.415,0.963730,1.415
+stage6_tumor_large_central_hard100kPa,Large central tumor hard 100 kPa,10.897359,1.445,5.900392,1.445,72.381945,1.445,1.800749,1.445
+stage6_tumor_medium_upper_outer_surface,Medium upper-outer tumor surface,10.896000,1.445,5.899939,1.445,72.623000,1.445,1.800645,1.445

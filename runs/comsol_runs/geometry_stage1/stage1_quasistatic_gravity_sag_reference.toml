@@ -1,0 +1,45 @@
+[pipeline]
+model_name = "breast_model_comsol"
+output_subdir = "outputs/output_stage1_quasistatic_gravity_sag_reference"
+
+[comsol]
+enabled = true
+batch_executable = "C:/Program Files/COMSOL/COMSOL64/Multiphysics/bin/win64/comsolbatch.exe"
+comsol_executable = "C:/Program Files/COMSOL/COMSOL64/Multiphysics/bin/win64/comsol.exe"
+configuration_dir = "comsol_configuration"
+mph_file = ""
+study = "std1"
+execute = true
+auto_build_from_java = true
+java_compile_first = true
+jdk_root = "C:/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot"
+extra_args = []
+java_compile_timeout_s = 300
+java_build_timeout_s = 0
+solve_timeout_s = 0
+postprocess_timeout_s = 1800
+postprocess_export_plot_images = true
+postprocess_save_postprocessed_mph = false
+enable_skin_shell_physics = false
+enable_skin_solid_coupling_scaffold = false
+skin_shell_thickness_m = 0.0001
+dynamic_motion_mode = "gravity_only"
+dynamic_motion_profile = "none"
+dynamic_motion_hold_s = 0.25
+dynamic_mass_damping_alpha_s_inv = 120.0
+gravity_ramp_duration_s = 2.0
+dynamic_settle_duration_s = 3.0
+enable_curved_chestwall = false
+chestwall_curve_depth_m = 0.0007
+compact_output = true
+chest_density_kg_m3 = 1050.0
+chest_youngs_modulus_pa = 10000.0
+chest_poissons_ratio = 0.49
+
+[source]
+base_case_toml = "outputs/output_baseline_simple_gland_dynamic_solid_only/prepare/baseline_simple_gland_dynamic_solid_only_inline_source_case.toml"
+reuse_febio_prepare = true
+export_mesh_npz = true
+export_mesh_csv = true
+export_lobules_json = true
+notes = "Stage 1 quasi-static candidate: fixed support, smoother gravity ramp, stronger Rayleigh mass damping, and longer settle to reduce transient ringing before extracting final sag/stress."
