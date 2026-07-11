@@ -1,0 +1,15 @@
+﻿<svg xmlns='http://www.w3.org/2000/svg' width='980' height='520' viewBox='0 0 980 520'>
+<rect width='100%' height='100%' fill='white'/>
+<text x='490' y='28' text-anchor='middle' font-family='Arial' font-size='20' font-weight='700'>Stage 5 manual postprocess: peak max displacement</text>
+<line x1='80' y1='395' x2='950' y2='395' stroke='#333'/><line x1='80' y1='55' x2='80' y2='395' stroke='#333'/>
+<line x1='75' y1='395' x2='80' y2='395' stroke='#333'/><line x1='80' y1='395' x2='950' y2='395' stroke='#eee'/><text x='70' y='399' text-anchor='end' font-family='Arial' font-size='12'>0</text>
+<line x1='75' y1='327' x2='80' y2='327' stroke='#333'/><line x1='80' y1='327' x2='950' y2='327' stroke='#eee'/><text x='70' y='331' text-anchor='end' font-family='Arial' font-size='12'>3.4</text>
+<line x1='75' y1='259' x2='80' y2='259' stroke='#333'/><line x1='80' y1='259' x2='950' y2='259' stroke='#eee'/><text x='70' y='263' text-anchor='end' font-family='Arial' font-size='12'>6.8</text>
+<line x1='75' y1='191' x2='80' y2='191' stroke='#333'/><line x1='80' y1='191' x2='950' y2='191' stroke='#eee'/><text x='70' y='195' text-anchor='end' font-family='Arial' font-size='12'>10.2</text>
+<line x1='75' y1='123' x2='80' y2='123' stroke='#333'/><line x1='80' y1='123' x2='950' y2='123' stroke='#eee'/><text x='70' y='127' text-anchor='end' font-family='Arial' font-size='12'>13.6</text>
+<line x1='75' y1='55' x2='80' y2='55' stroke='#333'/><line x1='80' y1='55' x2='950' y2='55' stroke='#eee'/><text x='70' y='59' text-anchor='end' font-family='Arial' font-size='12'>17</text>
+<rect x='155.465909090909' y='144.8' width='131.818181818182' height='250.2' fill='#1f77b4'/><text x='221.375' y='136.8' text-anchor='middle' font-family='Arial' font-size='12'>12.51</text><text transform='translate(221.375 413) rotate(35)' text-anchor='start' font-family='Arial' font-size='12'>No skin 1.00g</text>
+<rect x='372.965909090909' y='110.34' width='131.818181818182' height='284.66' fill='#d62728'/><text x='438.875' y='102.34' text-anchor='middle' font-family='Arial' font-size='12'>14.233</text><text transform='translate(438.875 413) rotate(35)' text-anchor='start' font-family='Arial' font-size='12'>No skin 1.25g</text>
+<rect x='590.465909090909' y='276.32' width='131.818181818182' height='118.68' fill='#2ca02c'/><text x='656.375' y='268.32' text-anchor='middle' font-family='Arial' font-size='12'>5.934</text><text transform='translate(656.375 413) rotate(35)' text-anchor='start' font-family='Arial' font-size='12'>Volumetric skin 1.25g</text>
+<rect x='807.965909090909' y='177.06' width='131.818181818182' height='217.94' fill='#9467bd'/><text x='873.875' y='169.06' text-anchor='middle' font-family='Arial' font-size='12'>10.897</text><text transform='translate(873.875 413) rotate(35)' text-anchor='start' font-family='Arial' font-size='12'>Vol skin + soft interior 1.25g</text>
+<text transform='translate(22 225) rotate(-90)' text-anchor='middle' font-family='Arial' font-size='14'>Peak max displacement (mm)</text></svg>

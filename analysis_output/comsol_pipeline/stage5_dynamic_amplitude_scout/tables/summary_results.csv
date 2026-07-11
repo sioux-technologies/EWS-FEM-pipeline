@@ -1,0 +1,4 @@
+case_label,last_output_time_s,solve_reached_expected_end,breast_volume_ml,glandular_fraction_pct,review_avg_displacement_mm,review_surface_signed_w_from_dynamic_start_mm,review_nipple_w_from_dynamic_start_mm,review_breast_vm_avg_kpa,review_breast_vm_max_kpa,review_gland_vm_avg_kpa,review_adipose_vm_avg_kpa
+No Cooper xoffset055 0.25g,2.2,True,585.0873718414647,24.308511851409225,2.997765699983465,0.16097794178263847,,0.32427417034937145,1.614779199169152,0.4507290503274836,0.2836628674961062
+No Cooper xoffset055 0.50g,2.2,True,585.0873875443982,24.308498318119195,2.863591571658072,0.3101793627001581,,0.3089022559125015,1.526418611280124,0.4264856863731524,0.27114006916656674
+No Cooper xoffset055 0.75g,0.0,False,585.0873838498885,24.30850168538827,0.0,,,0.0,0.0,0.0,0.0

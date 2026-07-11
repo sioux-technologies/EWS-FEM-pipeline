@@ -1,0 +1,34 @@
+[pipeline]
+model_name = "breast_model_comsol"
+output_subdir = "output"
+
+[comsol]
+enabled = true
+batch_executable = "C:/Program Files/COMSOL/COMSOL64/Multiphysics/bin/win64/comsolbatch.exe"
+comsol_executable = "C:/Program Files/COMSOL/COMSOL64/Multiphysics/bin/win64/comsol.exe"
+configuration_dir = "comsol_configuration"
+mph_file = ""
+study = "std1"
+execute = true
+auto_build_from_java = true
+java_compile_first = true
+jdk_root = "C:/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot"
+extra_args = []
+java_compile_timeout_s = 300
+java_build_timeout_s = 0
+solve_timeout_s = 0
+postprocess_timeout_s = 900
+enable_skin_shell_physics = true
+enable_skin_solid_coupling_scaffold = true
+skin_shell_thickness_m = 0.0001
+chest_density_kg_m3 = 1050.0
+chest_youngs_modulus_pa = 10000.0
+chest_poissons_ratio = 0.49
+
+[source]
+base_case_toml = "./chen2024_droplet_auto_comsol_source.toml"
+reuse_febio_prepare = true
+export_mesh_npz = true
+export_mesh_csv = true
+export_lobules_json = true
+notes = "Prepare step reuses a COMSOL-specific Chen-2024 source case and exports COMSOL-ready artefacts."

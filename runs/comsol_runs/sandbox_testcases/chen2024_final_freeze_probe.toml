@@ -1,0 +1,48 @@
+# Final freeze probe for glandular structure:
+# - move the whole fan slightly anterior so posterior petals stay inside the breast
+# - pull the duct hub/tips closer to the nipple to prepare the internal structure
+#   to act as the visible glandular region
+
+[model.mesh]
+density = 140
+debug_view = false
+
+[material.tumor]
+tumorous = false
+
+[material.glandular.hetero]
+enabled = true
+auto_generate = true
+generator_mode = "chen_2024_template_lobes"
+
+nipple = [ 0.0, 0.068, 0.0,]
+
+width = 0.0076
+amp_c1 = 70.0
+amp_c2 = 55.0
+amp_rho = 35.0
+seed = 42
+
+inner_ring_count = 6
+outer_ring_count = 12
+inner_ring_radius = 0.0135
+outer_ring_radius = 0.0270
+
+# Shift the full fan slightly toward the nipple.
+inner_depth = 0.027
+outer_depth = 0.042
+
+# Extend ducts further anteriorly and bring the shared hub closer to the nipple.
+droplet_length = 0.026
+hub_offset_y = 0.0095
+nipple_clearance_mid = 0.0125
+nipple_clearance_tip = 0.0085
+droplet_components = 2
+
+[material.adipose.hetero]
+enabled = true
+radial_center = [ 0.0, 0.0, 0.0,]
+radial_L = 0.05
+radial_alpha_c1 = 20.0
+radial_alpha_c2 = 15.0
+radial_alpha_rho = 25.0

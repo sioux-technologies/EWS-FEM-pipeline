@@ -1,118 +1,70 @@
-# Byte-compiled / optimized / DLL files
+# Python cache and local tooling
 __pycache__/
 *.py[cod]
-*$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
 .pytest_cache/
-cover/
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# mkdocs documentation
-/site
-
-# mypy
 .mypy_cache/
-.dmypy.json
-dmypy.json
+.ruff_cache/
 
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-.idea/
-
-# Log files
+# Local logs and temporary files
 *.log
-*.log.[0-9]
+*.tmp
 
-# febio files
-*.feb
-*.xplt
+# COMSOL/FEM heavy generated artefacts
+*.mph
+*.mph.*
+*.recovery
+*.status
+*.class
+*.comsol_command.txt
+**/comsol_configuration/
+**/org.eclipse.core.runtime/
+**/org.eclipse.osgi/
+**/org.eclipse.update/
+
+# Generated run/build/solve folders
+# Keep lightweight run provenance, but never track generated FEM artefacts.
+runs/**
+!runs/**/
+!runs/**/*.toml
+!runs/**/README.md
+runs/**/output/
+runs/**/outputs/
+runs/**/output_*/
+runs/**/build/
+runs/**/solve/
+runs/**/prepare/
+runs/comsol_full_overnight_suite/
+output/
+
+# FEBio/mesh/generated numerical artefacts
 *.vtk
+*.vtu
+*.xplt
+*.feb
+*.npy
+*.npz
+*.obj
+*.mtl
+*.stl
 
-# automatic versioning file
-src/ews_fem_pipeline/_version.py
+# Keep active lightweight analysis, ignore older duplicate analysis outputs
+analysis_output/figures/
+analysis_output/metrics_compare/
+analysis_output/legacy_benchmark/
+
+# Large manual COMSOL raw surface exports; keep derived summaries/plots instead.
+analysis_output/**/outer_skin_free_bnd_dataset*.csv
+analysis_output/**/surface_timeseries*.csv
+analysis_output/**/*_surface.csv
+!analysis_output/**/surface_comparison/**/*.csv
+!analysis_output/**/comparison_figures/*.csv
+!analysis_output/**/manual_postprocess_summary.csv
+!analysis_output/**/stage5_manual_postprocess_summary.csv
+
+# Local archive/delete staging areas are intentionally not versioned.
+**/delete_candidates/
+**/_archive_delete_candidates/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

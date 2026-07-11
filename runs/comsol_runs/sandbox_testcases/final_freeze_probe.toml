@@ -1,0 +1,28 @@
+[pipeline]
+model_name = "breast_model_comsol"
+output_subdir = "output_final_freeze_probe"
+
+[comsol]
+enabled = true
+batch_executable = "C:/Program Files/COMSOL/COMSOL64/Multiphysics/bin/win64/comsolbatch.exe"
+comsol_executable = "C:/Program Files/COMSOL/COMSOL64/Multiphysics/bin/win64/comsol.exe"
+configuration_dir = "comsol_configuration"
+mph_file = ""
+study = "std1"
+execute = true
+auto_build_from_java = true
+java_compile_first = true
+jdk_root = "C:/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot"
+extra_args = []
+java_compile_timeout_s = 300
+java_build_timeout_s = 0
+solve_timeout_s = 0
+postprocess_timeout_s = 900
+
+[source]
+base_case_toml = "./chen2024_final_freeze_probe.toml"
+reuse_febio_prepare = true
+export_mesh_npz = true
+export_mesh_csv = true
+export_lobules_json = true
+notes = "Final freeze probe: small anterior fan shift plus longer ducts toward a more nipple-adjacent hub."

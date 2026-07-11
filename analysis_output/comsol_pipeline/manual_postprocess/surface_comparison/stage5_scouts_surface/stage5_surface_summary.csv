@@ -1,0 +1,4 @@
+"Case","Nodes","PeakMeanDispMm","PeakMeanDispTimeS","PeakMaxDispMm","PeakMaxDispTimeS","PeakMeanAbsWMm","PeakMeanAbsWTimeS","MostNegativeWMm","MostNegativeWTimeS","ReviewMeanDispMm","ReviewMaxDispMm","ReviewMeanWMm","ReviewMinWMm","PeakMaxVmKpa","PeakMaxVmTimeS"
+"no_skin","754","54.13303","1.42","61.508916","1.42","54.044138","1.42","-61.508902","1.42","45.161484","50.491872","-45.112034","-50.491867","1.888555","1.415"
+"skin88","2776","13.020778","1.38","20.774107","1.38","12.78691","1.38","-20.774107","1.38","12.992397","20.771388","-12.758168","-20.771388","34.975034","1.38"
+"softskin","2776","27.998978","1.405","45.348609","1.405","27.779502","1.405","-45.348609","1.405","25.399173","40.907408","-25.212512","-40.907408","16.458121","1.405"

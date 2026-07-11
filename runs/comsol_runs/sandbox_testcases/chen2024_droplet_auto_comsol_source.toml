@@ -1,0 +1,51 @@
+# COMSOL-specific copy of the Chen-2024-inspired FEBio source case.
+# Keep this file as the sandbox for COMSOL geometry tuning so the original
+# FEBio testcase can remain a stable reference when needed.
+
+# Chen-2024 inspired glandular layout:
+# - double circular array (8 inner + 10 outer around nipple)
+# - teardrop-like lobules via chained Gaussian components toward the nipple
+[model.mesh]
+density = 140
+debug_view = false
+
+[material.tumor]
+tumorous = false
+
+[material.glandular.hetero]
+enabled = true
+auto_generate = true
+generator_mode = "chen_2024_template_lobes"
+
+# Nipple close to outer contour (radius=0.07 m model)
+nipple = [ 0.0, 0.068, 0.0,]
+
+# Base lobe property envelope
+width = 0.0076
+amp_c1 = 70.0
+amp_c2 = 55.0
+amp_rho = 35.0
+seed = 42
+
+# Chen-like double ring setup (total lobes = 18)
+# - 6 inner lobules in a compact central ring
+# - 12 outer lobules in a wider ring
+inner_ring_count = 6
+outer_ring_count = 12
+inner_ring_radius = 0.0135
+outer_ring_radius = 0.0270
+inner_depth = 0.030
+outer_depth = 0.046
+
+# Duct reach toward the nipple; each anatomical lobe becomes
+# one bulb/sac plus one duct primitive in the COMSOL builder.
+droplet_length = 0.022
+droplet_components = 2
+
+[material.adipose.hetero]
+enabled = true
+radial_center = [ 0.0, 0.0, 0.0,]
+radial_L = 0.05
+radial_alpha_c1 = 20.0
+radial_alpha_c2 = 15.0
+radial_alpha_rho = 25.0

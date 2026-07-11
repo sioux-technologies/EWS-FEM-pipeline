@@ -1,0 +1,6 @@
+"Group","Case","AvgPeakDispMm","AvgPeakTimeS","MaxPeakDispMm","MaxPeakTimeS","AvgReviewDispMm","MaxReviewDispMm","AvgPeakVmKpa","MaxPeakVmKpa","AvgPeakDispChangeVsNoSkinPct","MaxPeakDispChangeVsNoSkinPct"
+"skin_material","No skin, soft interior","27.556","1.415","61.531","1.42","24.163","50.492","0.956","3.127","0","0"
+"skin_material","0.1 mm soft skin","27.200","1.415","60.006","1.415","26.705","57.950","0.964","44.583","-1.29","-2.48"
+"skin_material","1.5 mm Femke-like skin","22.554","1.405","45.582","1.405","20.521","41.266","1.065","19.283","-18.15","-25.92"
+"skin_material","1.5 mm mid skin 88 kPa","13.242","1.38","25.49","1.375","13.21","25.49","1.271","42.897","-51.95","-58.57"
+"skin_material","1.5 mm stiff skin","5.704","1.445","11.144","1.445","5.283","9.787","1.747","69.671","-79.3","-81.89"

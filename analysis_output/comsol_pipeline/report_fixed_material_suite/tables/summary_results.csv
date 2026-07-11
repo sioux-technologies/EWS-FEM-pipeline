@@ -1,0 +1,3 @@
+case_label,last_output_time_s,solve_reached_expected_end,breast_volume_ml,glandular_fraction_pct,review_avg_displacement_mm,review_surface_signed_w_from_dynamic_start_mm,review_nipple_w_from_dynamic_start_mm,review_breast_vm_avg_kpa,review_breast_vm_max_kpa,review_gland_vm_avg_kpa,review_adipose_vm_avg_kpa
+Report baseline O1,1.2512444305534605,,718.7172365700098,11.94413073397307,5.99479332382703,,,0.443129662495896,11.182903068569843,0.8702492031335902,0.38519403963583976
+Report Stage 5B O1,1.2515401216917648,,718.7169574245335,11.944130628800991,6.00147190666051,,,0.444592085081523,11.771553724973481,0.8829088996517137,0.3851376349987358

@@ -1,0 +1,200 @@
+[pipeline]
+model_name = "breast_model_comsol"
+output_subdir = "outputs/output_stage5_scout_simple_gland_volskin_15mm_stiff_skin_soft_interior_125g_solve_only_preview"
+
+[comsol]
+enabled = true
+batch_executable = "C:/Program Files/COMSOL/COMSOL64/Multiphysics/bin/win64/comsolbatch.exe"
+comsol_executable = "C:/Program Files/COMSOL/COMSOL64/Multiphysics/bin/win64/comsol.exe"
+configuration_dir = "comsol_configuration"
+mph_file = ""
+study = "std1"
+execute = true
+auto_build_from_java = true
+reuse_mph_apply_toml_parameters = false
+java_compile_first = true
+jdk_root = "C:/Program Files/Eclipse Adoptium/jdk-21.0.10.7-hotspot"
+java_compile_timeout_s = 300
+java_build_timeout_s = 1800
+solve_timeout_s = 0
+postprocess_timeout_s = 0
+enable_default_result_plots = true
+enable_skin_shell_physics = false
+enable_skin_solid_coupling_scaffold = false
+skin_shell_thickness_m = 0.0001
+enable_volumetric_skin_layer = true
+volumetric_skin_thickness_m = 0.0015
+enable_curved_chestwall = false
+support_geometry_mode = "transverse_vp"
+chestwall_curve_depth_m = 0.021
+chestwall_curve_max_depth_ratio = 0.4
+chestwall_curve_max_offset_ratio = 0.95
+transverse_volume_preserve_y_scale = 1.12
+transverse_volume_preserve_gland_y_scale = 1.1
+outer_shape_scale_x = 1.08
+glandular_shape_scale_x = 1.0
+glandular_shape_scale_y = 1.0
+glandular_shape_scale_z = 1.0
+glandular_lobule_include_subareolar_core = false
+glandular_lobule_include_subareolar_bridge = false
+glandular_lobule_include_reference_ellipsoid = false
+glandular_subareolar_core_scale = 1.55
+glandular_subareolar_bridge_scale = 1.0
+compact_output = false
+chest_density_kg_m3 = 1050.0
+chest_youngs_modulus_pa = 10000.0
+chest_poissons_ratio = 0.49
+enable_cooper_ligament_scaffold = false
+cooper_ligament_variant = "none"
+cooper_ligament_effective_modulus_pa = 5800000.0
+cooper_ligament_reference_length_m = 0.04
+cooper_ligament_area_fraction = 0.12
+cooper_ligament_tangential_scale = 0.35
+cooper_ligament_damping_pa_s_per_m = 0.0
+postprocess_export_plot_images = false
+postprocess_save_postprocessed_mph = false
+postprocess_quick_mode = true
+postprocess_mode = "none"
+postprocess_write_auxiliary_mph = false
+dynamic_motion_mode = "fixed_support_acceleration_pulse"
+dynamic_motion_profile = "none"
+dynamic_motion_hold_s = 0.25
+dynamic_acceleration_amplitude_g = 1.25
+dynamic_acceleration_duration_s = 0.6
+dynamic_mass_damping_alpha_s_inv = 60.0
+dynamic_pulse_output_step_s = 0.005
+chestwall_curve_center_x_offset_m = 0.055
+chestwall_curve_si_depth_m = 0.0
+chestwall_alignment_mode = "projected_normal_axis"
+chestwall_si_alignment_mode = "global_x"
+chestwall_support_mode = "cylinder_band"
+chestwall_curve_nipple_follow_factor = 0.0
+chestwall_curve_gland_follow_factor = 0.0
+nipple_surface_center_overlap_fraction = 0.0
+nipple_geometry_x_offset_m = 0.0
+nipple_geometry_z_offset_m = 0.0
+nipple_surface_normal_alignment_enabled = false
+gland_nipple_surface_depth_factor = 0.6
+gland_nipple_surface_clearance_fraction = -0.9
+glandular_seed_surface_clearance_fraction = -0.1
+
+[source]
+base_case_toml = ""
+reuse_febio_prepare = true
+export_mesh_npz = false
+export_mesh_csv = false
+export_lobules_json = false
+notes = "Simple-gland computational scout: 1.5 mm volumetric skin with current stiff skin and soft interior. Direct simple-gland analogue of current volumetric-skin soft-interior route."
+
+[source_case]
+[source_case.model]
+[source_case.model.mesh]
+ls = 0.005
+density = 125
+optimize = true
+debug_view = false
+debug_stop_after_mesh = false
+order = 2
+
+[source_case.model.geometry]
+radius = 0.07
+thickness_chest_wall = 0.002
+left_relative_position_ellipse = 0.4
+right_relative_position_ellipse = 0.05
+center_relative_position_ellipse = 0.3
+outer_profile_mode = "elliptic"
+anterior_projection_scale = 1.08
+superior_pole_scale = 0.98
+upper_pole_projection_ratio = 0.0
+posterior_support_height_scale = 1.0
+posterior_curve_depth_ratio = 0.0
+pectoralis_support_projection_scale = 0.0
+pectoralis_support_shape = "curved_cap"
+pectoralis_support_center_ratio = 0.62
+pectoralis_support_span_ratio = 0.32
+profile_asymmetry_enabled = false
+
+[source_case.model.geometry.asymmetry]
+enabled = false
+scale_y = 1.0
+scale_z = 1.0
+
+[source_case.material]
+[source_case.material.skin]
+density = 1100.0
+bulk_modulus = 8330000.0
+pressure_model = "default"
+coef1 = 41667.0
+coef2 = 41667.0
+
+[source_case.material.skin.hetero]
+enabled = false
+
+[source_case.material.adipose]
+density = 950.0
+bulk_modulus = 425000.0
+pressure_model = "default"
+coef1 = 109.0
+coef2 = 106.0
+
+[source_case.material.adipose.hetero]
+enabled = false
+
+[source_case.material.glandular]
+density = 1070.0
+bulk_modulus = 425000.0
+pressure_model = "default"
+coef1 = 230.0
+coef2 = 195.0
+
+[source_case.material.glandular.hetero]
+enabled = false
+auto_generate = false
+generator_mode = "chen_2024_template_lobes"
+comsol_geometry_detail_mode = "fast"
+comsol_petal_segments = 3
+comsol_duct_beads = 0
+comsol_duct_style = "ellipsoid_segments"
+comsol_duct_segments = 4
+comsol_duct_radius_scale = 1.25
+nipple = [ 0.0, 0.068, 0.0 ]
+width = 0.0084
+amp_c1 = 70.0
+amp_c2 = 55.0
+amp_rho = 35.0
+seed = 42
+inner_ring_count = 4
+outer_ring_count = 8
+inner_ring_radius = 0.0125
+outer_ring_radius = 0.025
+inner_depth = 0.0215
+outer_depth = 0.035
+droplet_length = 0.034
+droplet_components = 2
+hub_offset_y = 0.0032
+nipple_clearance_mid = 0.0032
+nipple_clearance_tip = 0.0008
+chestwall_aware_lobules = true
+chestwall_reference_radius_m = 0.1306
+chestwall_curve_depth_m = 0.021
+chestwall_curve_center_x_offset_m = 0.055
+chestwall_clearance_m = 0.0035
+chestwall_posterior_margin_scale = 2.9
+
+[source_case.material.tumor]
+tumorous = false
+
+[source_case.simulation]
+[source_case.simulation.control_step1]
+step_size = 0.1
+time_steps = 10
+
+[source_case.simulation.control_step2]
+step_size = 0.01
+time_steps = 120
+
+[source_case.simulation.parabolic_jump]
+max_height = 0.01
+
+[source_case.simulation.animation]
+fps = 40

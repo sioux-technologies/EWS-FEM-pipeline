@@ -1,0 +1,6 @@
+case_label,main_purpose,difference_vs_previous,dynamic_input,current_interpretation
+Stage 1 0.25g baseline,Motion sanity baseline,"Simple baseline geometry, larger breast volume, simple glandular setup, no selected x-offset chestwall route","Fixed-support acceleration pulse, 0.25g for 0.60 s","Useful to validate the 0.25g dynamic route, but not a clean anatomical comparator for Stage 2-5."
+Stage 2 xoffset055 chestwall,Selected chestwall geometry,"Adds transverse volume-preserving chestwall with +55 mm x-offset and projected-normal auto-alignment","Same 0.25g pulse","First fair geometry baseline for later anatomical stages."
+Stage 3 realistic glandular,Glandular realism reference,"Keeps Stage 2 chestwall and adds realistic chestwall-aware lobule spread","Same 0.25g pulse","Main current anatomical glandular reference; expected to differ modestly from Stage 2."
+Stage 4 realistic reference,Reference for asymmetry stage,"Intentionally keeps Stage 3 reference geometry: no profile asymmetry and no nipple shift","Same 0.25g pulse","Baseline/control for later Stage 4 asymmetry cases; little change versus Stage 3 expected."
+Stage 5 no-Cooper control,No-Cooper control for Cooper stage,"Intentionally keeps Stage 3/4 reference geometry and disables Cooper scaffold","Same 0.25g pulse","Control case for Stage 5 Cooper comparisons; little change versus Stage 4 expected."

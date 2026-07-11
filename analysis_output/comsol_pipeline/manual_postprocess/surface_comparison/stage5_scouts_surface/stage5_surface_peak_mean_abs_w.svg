@@ -1,0 +1,28 @@
+﻿<svg xmlns='http://www.w3.org/2000/svg' width='820' height='460' viewBox='0 0 820 460'>
+<rect width='100%' height='100%' fill='white'/>
+<text x='410' y='32' text-anchor='middle' font-family='Arial' font-size='19' font-weight='700'>Stage 5 surface response: peak mean vertical motion</text>
+<line x1='90' y1='380' x2='790' y2='380' stroke='#333'/>
+<line x1='90' y1='60' x2='90' y2='380' stroke='#333'/>
+<line x1='85' y1='380' x2='790' y2='380' stroke='#e8e8e8'/>
+<text x='80' y='384' text-anchor='end' font-family='Arial' font-size='12'>0</text>
+<line x1='85' y1='316' x2='790' y2='316' stroke='#e8e8e8'/>
+<text x='80' y='320' text-anchor='end' font-family='Arial' font-size='12'>12</text>
+<line x1='85' y1='252' x2='790' y2='252' stroke='#e8e8e8'/>
+<text x='80' y='256' text-anchor='end' font-family='Arial' font-size='12'>25</text>
+<line x1='85' y1='188' x2='790' y2='188' stroke='#e8e8e8'/>
+<text x='80' y='192' text-anchor='end' font-family='Arial' font-size='12'>37</text>
+<line x1='85' y1='124' x2='790' y2='124' stroke='#e8e8e8'/>
+<text x='80' y='128' text-anchor='end' font-family='Arial' font-size='12'>50</text>
+<line x1='85' y1='59.9999999999999' x2='790' y2='59.9999999999999' stroke='#e8e8e8'/>
+<text x='80' y='63.9999999999999' text-anchor='end' font-family='Arial' font-size='12'>62</text>
+<rect x='206.666666666667' y='101.739130434783' width='129.62962962963' height='278.260869565217' fill='#4c78a8'/>
+<text x='271.481481481482' y='95.7391304347826' text-anchor='middle' font-family='Arial' font-size='12'>54.0</text>
+<text x='271.481481481482' y='402' text-anchor='middle' font-family='Arial' font-size='12'>no_skin</text>
+<rect x='440' y='314.163133554796' width='129.62962962963' height='65.836866445204' fill='#f58518'/>
+<text x='504.814814814815' y='308.163133554796' text-anchor='middle' font-family='Arial' font-size='12'>12.8</text>
+<text x='504.814814814815' y='402' text-anchor='middle' font-family='Arial' font-size='12'>skin88</text>
+<rect x='673.333333333333' y='236.969716445312' width='129.62962962963' height='143.030283554688' fill='#54a24b'/>
+<text x='738.148148148148' y='230.969716445312' text-anchor='middle' font-family='Arial' font-size='12'>27.8</text>
+<text x='738.148148148148' y='402' text-anchor='middle' font-family='Arial' font-size='12'>softskin</text>
+<text x='18' y='220' transform='rotate(-90 18 220)' text-anchor='middle' font-family='Arial' font-size='14'>Peak mean |w| (mm)</text>
+</svg>

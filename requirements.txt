@@ -1,0 +1,6 @@
+numpy
+pydantic
+pydantic-core
+gmsh
+matplotlib
+Pillow
